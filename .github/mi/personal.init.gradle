@@ -1,0 +1,10 @@
+// Personal build: installs next to the official Metrolist app under its own name.
+allprojects { p ->
+    p.plugins.withId('com.android.application') {
+        def components = p.extensions.getByName('androidComponents')
+        components.onVariants(components.selector().withBuildType('release')) { variant ->
+            variant.applicationId.set('com.metrolist.music.mio')
+            variant.manifestPlaceholders.put('appLabel', 'MiMetrolist')
+        }
+    }
+}

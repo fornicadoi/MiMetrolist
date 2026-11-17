@@ -1,0 +1,34 @@
+name: Mi sincronización
+
+# Trae cada día los cambios de MetrolistGroup/Metrolist y, si hubo novedades,
+# compila una APK nueva.
+
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+    if: github.event.repository.fork
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sincronizar con Metrolist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          branch="${{ github.event.repository.default_branch }}"
+          if ! result=$(gh api -X POST "repos/$GITHUB_REPOSITORY/merge-upstream" -f branch="$branch" 2>&1); then
+            echo "::error::No se pudo sincronizar automáticamente: $result"
+            echo "::error::Entra en tu repositorio y usa 'Sync fork > Update branch'. Si hay conflictos, pídele ayuda a Claude."
+            exit 1
+          fi
+          echo "$result"
+          if [ "$(echo "$result" | jq -r '.merge_type')" != "none" ]; then
+            gh workflow run mi-apk.yml -R "$GITHUB_REPOSITORY" --ref "$branch"
+          fi

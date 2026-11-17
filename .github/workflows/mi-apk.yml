@@ -1,0 +1,99 @@
+name: Mi APK
+
+# Compila la versión personal optimizada, firmada siempre con la misma clave,
+# y la publica en Releases como MiMetrolist.apk.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'fastlane/**'
+
+concurrency:
+  group: mi-apk
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.event.repository.fork
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Liberar espacio en disco
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+
+      - name: Descargar código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Instalar JDK 25
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+
+      - name: Preparar Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+        with:
+          packages: platform-tools
+
+      - name: Preparar clave de firma
+        env:
+          MI_KEYSTORE_B64: ${{ secrets.MI_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$MI_KEYSTORE_B64" ]; then
+            echo "::error::Falta el secreto MI_KEYSTORE_B64 (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          printf '%s' "$MI_KEYSTORE_B64" | tr -d '[:space:]' | base64 --decode > "$RUNNER_TEMP/mi.jks"
+          echo "KEYSTORE_PATH=$RUNNER_TEMP/mi.jks" >> "$GITHUB_ENV"
+
+      - name: Compilar APK optimizada
+        env:
+          # La clave en sí es el secreto; esta contraseña solo protege el archivo.
+          KEYSTORE_PASSWORD: mimetrolist-local
+          KEY_ALIAS: mimetrolist
+          KEY_PASSWORD: mimetrolist-local
+        run: |
+          set -euo pipefail
+          base_version=$(sed -n 's/^appVersion=//p' gradle.properties)
+          # El sufijo "+mio" también desactiva el envío de errores al equipo de Metrolist.
+          echo "APP_VERSION=${base_version}+mio" >> "$GITHUB_ENV"
+          ./gradlew :androidApp:assembleRelease \
+            --no-daemon --no-configuration-cache \
+            --init-script .github/mi/personal.init.gradle \
+            -x :androidApp:lintVitalRelease \
+            "-PappVersion=${base_version}+mio" \
+            "-Dorg.gradle.jvmargs=-Xmx7g -XX:MaxMetaspaceSize=1g -XX:+UseParallelGC -Dfile.encoding=UTF-8"
+
+      - name: Reunir APK
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          apk=$(find androidApp/build/outputs/apk/release -name '*.apk' | head -n 1)
+          test -n "$apk"
+          cp "$apk" dist/MiMetrolist.apk
+          ls -la dist
+
+      - name: Publicar en Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release delete ultima --cleanup-tag --yes -R "$GITHUB_REPOSITORY" || true
+          gh release create ultima dist/MiMetrolist.apk -R "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --latest \
+            --title "MiMetrolist $APP_VERSION ($(date -u +%Y-%m-%d))" \
+            --notes "Compilada desde ${GITHUB_SHA::7}. Descarga MiMetrolist.apk e instálala encima de la anterior."
