@@ -188,6 +188,8 @@ import com.metrolist.android.ui.component.floatingBarCircle
 import com.metrolist.android.ui.components.AccountMenu
 import com.metrolist.android.ui.components.DesktopCaptionBar
 import com.metrolist.android.ui.components.DesktopMiniPlayerHeight
+import com.metrolist.android.ui.components.MioMiniPlayerHeight
+import com.metrolist.android.ui.components.mioCardMiniPlayerEnabled
 import com.metrolist.android.ui.components.MiniPlayer
 import com.metrolist.android.ui.components.calculateMiniPlayerInsets
 import com.metrolist.android.ui.components.calculateNavigationContentInset
@@ -453,13 +455,11 @@ fun MetrolistApp(
         BlockScreenshots()
     }
 
-    val artworkSeedColor =
-        playbackViewModel.seedColor
-            .collectAsState()
-            .value
-            .takeIf { songArtworkColorsEnabled }
+    val rawArtworkSeedColor = playbackViewModel.seedColor.collectAsState().value
+    val artworkSeedColor = rawArtworkSeedColor.takeIf { songArtworkColorsEnabled }
     MetrolistTheme(
         darkTheme = darkTheme,
+        mioSongColor = rawArtworkSeedColor,
         dynamicColor = materialYouEnabled && hasDynamicColorSdk && artworkSeedColor == null,
         themeColor =
             resolveThemeSeedColor(
@@ -826,8 +826,10 @@ fun MetrolistApp(
                 label = "navigationVisibility",
             )
         val hasBottomNavigation = navigationSuiteType.isNavigationBar
-        val isExpressiveMiniPlayer = Settings.shared.miniPlayerType == MiniPlayerType.EXPRESSIVE && !useDesktopMiniPlayer
-        val isModernMiniPlayer = Settings.shared.miniPlayerType == MiniPlayerType.MODERN && !useDesktopMiniPlayer
+        val mioCardMiniPlayer = !useDesktopMiniPlayer && mioCardMiniPlayerEnabled(useDesktopLayout = false)
+        val isExpressiveMiniPlayer =
+            !mioCardMiniPlayer && Settings.shared.miniPlayerType == MiniPlayerType.EXPRESSIVE && !useDesktopMiniPlayer
+        val isModernMiniPlayer = !mioCardMiniPlayer && Settings.shared.miniPlayerType == MiniPlayerType.MODERN && !useDesktopMiniPlayer
         val miniPlayerBottomSpacing =
             when {
                 isExpressiveMiniPlayer -> ModernMiniPlayerBottomSpacing
@@ -845,6 +847,8 @@ fun MetrolistApp(
         val miniPlayerHeight =
             if (useDesktopMiniPlayer) {
                 DesktopMiniPlayerHeight
+            } else if (mioCardMiniPlayer) {
+                MioMiniPlayerHeight
             } else if (isExpressiveMiniPlayer) {
                 ExpressiveMiniPlayerHeight
             } else if (isModernMiniPlayer) {

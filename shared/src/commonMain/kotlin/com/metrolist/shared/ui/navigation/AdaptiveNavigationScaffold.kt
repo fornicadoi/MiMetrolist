@@ -54,6 +54,7 @@ import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarArrangement
 import androidx.compose.material3.ShortNavigationBarDefaults
 import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.WideNavigationRail
@@ -81,8 +82,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.metrolist.shared.settings.MioNavBar
+import com.metrolist.shared.settings.Settings
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -702,13 +706,43 @@ private fun <T> SlimNavigationBarContent(
     itemModifier: @Composable (T) -> Modifier,
     isCompact: Boolean,
 ) {
+    val mioNavBar = if (Settings.shared.mioStyle) Settings.shared.mioNavBar else MioNavBar.ORIGINAL
+    val surface = MaterialTheme.colorScheme.surface
+    val barBackground =
+        when (mioNavBar) {
+            MioNavBar.DEGRADADO -> {
+                Modifier.background(
+                    Brush.verticalGradient(listOf(surface.copy(alpha = 0.6f), surface.copy(alpha = 0.95f), surface)),
+                )
+            }
+
+            MioNavBar.SOLIDA -> {
+                Modifier.background(surface)
+            }
+
+            MioNavBar.ORIGINAL -> {
+                Modifier.background(containerColor)
+            }
+        }
+    val mioItemColors =
+        if (mioNavBar != MioNavBar.ORIGINAL) {
+            ShortNavigationBarItemDefaults.colors(
+                selectedIconColor = MaterialTheme.colorScheme.onSurface,
+                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                selectedIndicatorColor = Color.Transparent,
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            null
+        }
     ShortNavigationBar(
         modifier =
             Modifier
-                .background(containerColor)
+                .then(barBackground)
                 .windowInsetsPadding(ShortNavigationBarDefaults.windowInsets)
                 .height(56.dp),
-        containerColor = containerColor,
+        containerColor = if (mioNavBar != MioNavBar.ORIGINAL) Color.Transparent else containerColor,
         windowInsets = WindowInsets(0),
         arrangement =
             if (isCompact) {
@@ -735,6 +769,7 @@ private fun <T> SlimNavigationBarContent(
                     } else {
                         NavigationItemIconPosition.Start
                     },
+                colors = mioItemColors ?: ShortNavigationBarItemDefaults.colors(),
                 modifier = itemModifier(item.key),
             )
         }

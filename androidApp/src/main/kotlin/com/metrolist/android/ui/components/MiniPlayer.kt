@@ -206,8 +206,9 @@ fun MiniPlayer(
     val isLive = currentSong?.isLive == true || playbackResource?.isLive == true
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val miniPlayerActive = bottomSheetState?.isCollapsed != false && lifecycleState == Lifecycle.State.RESUMED
-    val isExpressiveMiniPlayer = Settings.shared.miniPlayerType == MiniPlayerType.EXPRESSIVE && !useDesktopLayout
-    val isModern = Settings.shared.miniPlayerType == MiniPlayerType.MODERN && !useDesktopLayout
+    val mioCard = mioCardMiniPlayerEnabled(useDesktopLayout)
+    val isExpressiveMiniPlayer = !mioCard && Settings.shared.miniPlayerType == MiniPlayerType.EXPRESSIVE && !useDesktopLayout
+    val isModern = !mioCard && Settings.shared.miniPlayerType == MiniPlayerType.MODERN && !useDesktopLayout
     val expressiveProgressEnabled = isExpressiveMiniPlayer && Settings.shared.showExpressiveMiniPlayerProgress
     val progressActive = miniPlayerActive && (!isExpressiveMiniPlayer || expressiveProgressEnabled) && !useDesktopLayout && !isLive
     var progressWidthPx by remember { mutableIntStateOf(0) }
@@ -342,6 +343,8 @@ fun MiniPlayer(
                 .height(
                     if (useDesktopLayout) {
                         DesktopMiniPlayerHeight
+                    } else if (mioCard) {
+                        MioMiniPlayerHeight
                     } else if (isExpressiveMiniPlayer) {
                         ExpressiveMiniPlayerHeight
                     } else if (isModern) {
@@ -373,6 +376,32 @@ fun MiniPlayer(
                     onSkipPrevious = { playerConnection.skipToPrevious() },
                 ),
     ) {
+        if (mioCard) {
+            MioMiniPlayerCard(
+                song = song,
+                isPlaying = if (isListenTogetherGuest) !isMuted else isPlaying,
+                isLoading = isPlaybackLoading && miniPlayerActive,
+                progress = { progress.value },
+                showProgress = !isLive && duration > 0L,
+                onExpand = {
+                    hapticManager.perform(HapticEvent.PRESS)
+                    onExpand()
+                },
+                onTogglePlay = {
+                    hapticManager.toggle(if (isListenTogetherGuest) isMuted else !isPlaying)
+                    if (isListenTogetherGuest) {
+                        playerConnection.setVolume(if (volume > 0.01f) 0f else 1f)
+                    } else {
+                        playerConnection.togglePlayPause()
+                    }
+                },
+                modifier =
+                    Modifier
+                        .onSizeChanged { progressWidthPx = it.width }
+                        .graphicsLayer { translationX = dragOffset.value.x },
+            )
+            return
+        }
         if (isExpressiveMiniPlayer) {
             val database: MusicDatabase = koinInject()
             val artist = song.artists.firstOrNull { !it.id.isNullOrBlank() }

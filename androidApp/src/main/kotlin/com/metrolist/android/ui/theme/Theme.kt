@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +64,7 @@ fun MetrolistTheme(
     pureBlack: Boolean = false,
     themeColor: Color = DefaultThemeColor,
     dynamicColor: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+    mioSongColor: Color? = null,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -124,9 +126,9 @@ fun MetrolistTheme(
     val mioAccent = Settings.shared.mioAccent
     val mioOled = Settings.shared.mioOled
     val colorScheme =
-        remember(baseColorScheme, pureBlack, darkTheme, mioStyle, mioAccent, mioOled, themeColor) {
+        remember(baseColorScheme, pureBlack, darkTheme, mioStyle, mioAccent, mioOled, mioSongColor) {
             if (mioStyle) {
-                mioColorScheme(mioAccent.resolve(themeColor.takeIf { it != DefaultThemeColor }), mioOled)
+                mioColorScheme(mioAccent.resolve(mioSongColor), mioOled)
             } else if (darkTheme && pureBlack) {
                 baseColorScheme.pureBlack()
             } else {
@@ -153,7 +155,7 @@ fun MetrolistTheme(
         shapes = shapes,
         motionScheme = motionScheme,
     ) {
-        CompositionLocalProvider(LocalIsTv provides isTv) {
+        CompositionLocalProvider(LocalIsTv provides isTv, LocalMioSongColor provides mioSongColor) {
             MetrolistHapticsProvider {
                 FocusOutlineProvider(enabled = isTv, content = content)
             }
@@ -176,6 +178,9 @@ private fun rememberSystemContrast(context: Context): Float {
 }
 
 fun Bitmap.extractThemeColor(): Color = ThemeColorExtractor().extractSeedColor(this)
+
+/** Color dominante de la carátula que suena (MiMetrolist). */
+val LocalMioSongColor = compositionLocalOf<Color?> { null }
 
 internal object SystemBarAppearance {
     var imageOwners by mutableIntStateOf(0)
