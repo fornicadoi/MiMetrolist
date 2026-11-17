@@ -54,8 +54,10 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$MI_KEYSTORE_B64" ]; then
-            echo "::error::Falta el secreto MI_KEYSTORE_B64 (Settings > Secrets and variables > Actions)."
-            exit 1
+            # Sin clave igual se compila para detectar errores, pero no se publica.
+            echo "::warning::Falta el secreto MI_KEYSTORE_B64; se compila sin firmar y no se publica."
+            echo "MI_UNSIGNED=1" >> "$GITHUB_ENV"
+            exit 0
           fi
           printf '%s' "$MI_KEYSTORE_B64" | tr -d '[:space:]' | base64 --decode > "$RUNNER_TEMP/mi.jks"
           echo "KEYSTORE_PATH=$RUNNER_TEMP/mi.jks" >> "$GITHUB_ENV"
@@ -68,6 +70,7 @@ jobs:
           KEY_PASSWORD: mimetrolist-local
         run: |
           set -euo pipefail
+          if [ "${MI_UNSIGNED:-}" = "1" ]; then unset KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; fi
           base_version=$(sed -n 's/^appVersion=//p' gradle.properties)
           # El sufijo "+mio" también desactiva el envío de errores al equipo de Metrolist.
           echo "APP_VERSION=${base_version}+mio" >> "$GITHUB_ENV"
@@ -86,6 +89,12 @@ jobs:
           test -n "$apk"
           cp "$apk" dist/MiMetrolist.apk
           ls -la dist
+
+      - name: Avisar si falta la clave
+        if: env.MI_UNSIGNED == '1'
+        run: |
+          echo "::error::La app compiló, pero falta el secreto MI_KEYSTORE_B64 para firmarla y publicarla."
+          exit 1
 
       - name: Publicar en Releases
         env:
