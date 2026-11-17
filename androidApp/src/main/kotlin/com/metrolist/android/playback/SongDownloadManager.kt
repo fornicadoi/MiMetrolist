@@ -450,7 +450,7 @@ class SongDownloadManager(
     ): PlaybackResource? {
         val resolver = GlobalYouTubeRepository.streamResolver ?: return null
         val hints = song.toContentHints().forAudioDownload(preferSabr = refresh)
-        val quality = playbackAudioQuality()
+        val quality = downloadAudioQuality()
         return resolver.resolveRemote(song.id, hints, quality, sourceSong = song, refresh = refresh)
     }
 

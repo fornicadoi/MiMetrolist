@@ -36,6 +36,8 @@
     <string name="mio_nav_bar_degradado">Degradado a negro</string>
     <string name="mio_nav_bar_solida">Sólida</string>
     <string name="mio_nav_bar_original">Original de Metrolist</string>
+    <string name="mio_download_light">Descargas ligeras</string>
+    <string name="mio_download_light_description">Descarga solo el audio en la calidad más baja: archivos más pequeños y descargas más rápidas. No cambia la calidad al escuchar en línea</string>
     <string name="mio_greeting_morning">Buenos días</string>
     <string name="mio_greeting_afternoon">Buenas tardes</string>
     <string name="mio_greeting_evening">Buenas noches</string>

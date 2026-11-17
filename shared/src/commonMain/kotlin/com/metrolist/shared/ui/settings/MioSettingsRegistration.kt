@@ -142,5 +142,12 @@ internal fun SettingsPageRegistryBuilder.mioSettingsGroup() {
             selectedChoiceId = settings.mioNavBar.name,
             enabled = enabled,
         ) { settings.mioNavBar = MioNavBar.valueOf(it) }
+
+        switch(
+            id = "mioDownloadLight",
+            title = stringResource(Res.string.mio_download_light),
+            description = stringResource(Res.string.mio_download_light_description),
+            checked = settings.mioDownloadLight,
+        ) { settings.mioDownloadLight = it }
     }
 }

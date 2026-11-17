@@ -9,3 +9,6 @@ internal fun playbackAudioQuality(): AudioQuality =
     } catch (_: IllegalArgumentException) {
         AudioQuality.AUTO
     }
+
+/** MiMetrolist: las descargas usan el audio más liviano si "Descargas ligeras" está activo. */
+internal fun downloadAudioQuality(): AudioQuality = if (Settings.shared.mioDownloadLight) AudioQuality.LOW else playbackAudioQuality()

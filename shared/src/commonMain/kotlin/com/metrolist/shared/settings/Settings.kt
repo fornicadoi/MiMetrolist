@@ -324,6 +324,7 @@ class Settings(
     var mioHomeShortcuts by preference(true)
     var mioMiniPlayer by preference(MioMiniPlayer.TARJETA)
     var mioNavBar by preference(MioNavBar.DEGRADADO)
+    var mioDownloadLight by preference(true)
 
     var appFont by preference(FontOption.SYSTEM)
     var androidCustomFontFile by preference(AndroidCustomFontFileKey, "")
