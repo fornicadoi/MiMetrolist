@@ -726,12 +726,10 @@ private fun <T> SlimNavigationBarContent(
         }
     val mioItemColors =
         if (mioNavBar != MioNavBar.ORIGINAL) {
-            ShortNavigationBarItemDefaults.colors(
+            ShortNavigationBarItemDefaults.colors().copy(
                 selectedIconColor = MaterialTheme.colorScheme.onSurface,
-                selectedTextColor = MaterialTheme.colorScheme.onSurface,
                 selectedIndicatorColor = Color.Transparent,
                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
             null
