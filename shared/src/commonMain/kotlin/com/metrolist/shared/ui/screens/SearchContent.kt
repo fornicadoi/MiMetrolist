@@ -533,7 +533,7 @@ private fun SearchEmptyState(
                     }
                 }
             }
-        } else if (recentSearchItems.isEmpty()) {
+        } else if (recentSearchItems.isEmpty() && !mioExploreEnabled()) {
             item {
                 Box(
                     modifier = Modifier.fillParentMaxSize(),
@@ -546,6 +546,9 @@ private fun SearchEmptyState(
                     )
                 }
             }
+        }
+        if (mioExploreEnabled()) {
+            item(key = "mio_explore") { MioExploreGrid(onGenreClick = onHistoryItemClick) }
         }
     }
 }

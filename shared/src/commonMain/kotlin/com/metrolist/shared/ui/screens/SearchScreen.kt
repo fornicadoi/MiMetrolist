@@ -59,6 +59,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import com.metrolist.shared.settings.Settings
+import com.metrolist.shared.ui.theme.mioCorner
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -152,6 +154,9 @@ fun SearchScreen(
             val isWide = maxWidth > 600.dp
 
             Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                if (showSearchBar && mioSearchTitleVisible(query, isQuerySubmitted)) {
+                    MioSearchTitle()
+                }
                 if (showSearchBar) {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(end = searchBarEndPadding),
@@ -272,12 +277,26 @@ fun SearchBar(
         val isWide = maxWidth > 480.dp
 
         if (!isWide && !isTv) {
+            val mio = Settings.shared.mioStyle
+            val baseScheme = MaterialTheme.colorScheme
+            val fieldScheme =
+                if (mio) {
+                    baseScheme.copy(
+                        surfaceContainerHigh = Color.White,
+                        onSurface = Color(0xFF121212),
+                        onSurfaceVariant = Color(0xFF555555),
+                        primary = Color(0xFF121212),
+                    )
+                } else {
+                    baseScheme
+                }
+            MaterialTheme(colorScheme = fieldScheme) {
             val searchBarColors =
                 SearchBarDefaults.colors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 )
             Surface(
-                shape = SearchBarDefaults.inputFieldShape,
+                shape = if (mio) RoundedCornerShape(mioCorner(10.dp)) else SearchBarDefaults.inputFieldShape,
                 content = {
                     SearchBarDefaults.InputField(
                         textFieldState = textFieldState,
@@ -332,6 +351,7 @@ fun SearchBar(
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp,
             )
+            }
         } else {
             val barHeight = if (isTv) 48.dp else 40.dp
             val iconSize = 18.dp

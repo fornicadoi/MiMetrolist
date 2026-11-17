@@ -120,8 +120,10 @@ import com.metrolist.shared.ui.navigation.AlbumArtworkSource
 import com.metrolist.shared.ui.navigation.navigationPageSource
 import com.metrolist.shared.ui.navigation.navigationPopupSource
 import com.metrolist.shared.ui.navigation.rememberAlbumArtworkSource
+import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.ui.theme.gridCellInset
 import com.metrolist.shared.ui.theme.gridCellShape
+import com.metrolist.shared.ui.theme.mioCorner
 import com.metrolist.shared.ui.theme.uiEnhanced
 import com.metrolist.shared.ui.utils.artistArtworkShape
 import com.metrolist.shared.ui.utils.carouselCaption
@@ -1133,19 +1135,23 @@ fun ListCard(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
 ) {
+    // MiMetrolist: filas más altas, carátula más grande y título más marcado.
+    val mio = Settings.shared.mioStyle
+    val artSize = if (mio) 56.dp else 48.dp
+    val cornerRadius = if (mio) mioCorner(ThumbnailCornerRadius) else ThumbnailCornerRadius
     Row(
-        Modifier.fillMaxWidth().height(48.dp),
+        Modifier.fillMaxWidth().height(if (mio) 64.dp else 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Artwork(
             thumbnail,
             icon,
-            modifier = Modifier.squareArtworkSlot(48.dp, artworkAspectRatio).then(artworkModifier),
+            modifier = Modifier.squareArtworkSlot(artSize, artworkAspectRatio).then(artworkModifier),
             iconSize = 24.dp,
             cover = cover,
             localArtwork = localArtwork,
-            cornerRadius = ThumbnailCornerRadius,
-            shape = artistId?.let { artistArtworkShape(it) } ?: RoundedCornerShape(ThumbnailCornerRadius),
+            cornerRadius = cornerRadius,
+            shape = artistId?.let { artistArtworkShape(it) } ?: RoundedCornerShape(cornerRadius),
             iconModifier = iconModifier,
             overlay = artworkOverlay,
             isPlaylistArtwork = isPlaylistArtwork,
@@ -1156,8 +1162,14 @@ fun ListCard(
         Column(Modifier.weight(1f)) {
             Text(
                 title,
-                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 17.sp),
-                fontWeight = FontWeight.Medium,
+                style =
+                    if (mio) {
+                        MaterialTheme.typography.bodyLarge.copy(lineHeight = 20.sp)
+                    } else {
+                        MaterialTheme.typography.bodyMedium.copy(lineHeight = 17.sp)
+                    },
+                fontWeight = if (mio) FontWeight.SemiBold else FontWeight.Medium,
+                color = if (mio && isCurrent) MaterialTheme.colorScheme.primary else Color.Unspecified,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = titleModifier,
@@ -1165,7 +1177,12 @@ fun ListCard(
             if (subtitle.isNotEmpty()) {
                 Text(
                     subtitle,
-                    style = MaterialTheme.typography.labelSmall.copy(lineHeight = 12.sp),
+                    style =
+                        if (mio) {
+                            MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp)
+                        } else {
+                            MaterialTheme.typography.labelSmall.copy(lineHeight = 12.sp)
+                        },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

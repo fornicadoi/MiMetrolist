@@ -33,6 +33,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SplitButtonDefaults
@@ -641,6 +642,10 @@ private fun LibraryHeader(
     onFilterChange: (LibraryFilter?) -> Unit,
     onGridViewChange: (Boolean) -> Unit,
 ) {
+    if (Settings.shared.mioStyle && !isDesktop) {
+        MioLibraryHeader(text, selectedFilter, isGridView, sortType, isSearchOpen, onSearchToggle, onFilterChange, onGridViewChange)
+        return
+    }
     var sortExpanded by remember { mutableStateOf(false) }
     var sortMenuOffset by remember { mutableStateOf(IntOffset.Zero) }
     var gridSizeExpanded by remember { mutableStateOf(false) }
@@ -1205,5 +1210,98 @@ internal fun dispatchLibraryItemClick(
     } else {
         CollectionPreviews.record(item)
         onOpenItem(item)
+    }
+}
+
+/** MiMetrolist: cabecera compacta de la biblioteca (filtros en píldora, orden en texto e iconos simples). */
+@Composable
+private fun MioLibraryHeader(
+    text: LibraryContentText,
+    selectedFilter: LibraryFilter?,
+    isGridView: Boolean,
+    sortType: LibrarySortType,
+    isSearchOpen: Boolean,
+    onSearchToggle: () -> Unit,
+    onFilterChange: (LibraryFilter?) -> Unit,
+    onGridViewChange: (Boolean) -> Unit,
+) {
+    var sortExpanded by remember { mutableStateOf(false) }
+    var sortMenuOffset by remember { mutableStateOf(IntOffset.Zero) }
+    val sortingFilter = selectedFilter?.let { LibraryFilterType.valueOf(it.name) } ?: LibraryFilterType.ALL
+    val sorting = Settings.shared.librarySorting(sortingFilter)
+    val ascending = sorting.direction == SortDirection.ASCENDING
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        ChipShelf(
+            options = LibraryFilter.entries.filterNot { it == LibraryFilter.PODCASTS && Settings.shared.hidePodcasts },
+            selectedOption = selectedFilter,
+            onSelectionChange = onFilterChange,
+            label = { text.filterLabels.getValue(it) },
+            modifier = Modifier.padding(top = 1.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp),
+        )
+        Row(
+            Modifier.fillMaxWidth().height(44.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.trackPressPosition { sortMenuOffset = it.round() }) {
+                TextButton(onClick = { sortExpanded = true }) {
+                    Text(
+                        text = text.sortLabels.getValue(sortType),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                ExpressiveSelectionMenu(
+                    expanded = sortExpanded,
+                    onDismissRequest = { sortExpanded = false },
+                    anchorOffset = sortMenuOffset,
+                    options = LibrarySortType.entries.filter { it.isAvailableFor(selectedFilter) },
+                    selectedOption = sortType,
+                    optionLabel = { text.sortLabels.getValue(it) },
+                    onOptionSelected = { option ->
+                        Settings.shared.setLibrarySorting(
+                            sortingFilter,
+                            LibrarySorting(LibraryContentSort.valueOf(option.name), option.defaultDirection),
+                        )
+                    },
+                )
+            }
+            if (sortType != LibrarySortType.MANUAL) {
+                val rotation by animateFloatAsState(if (ascending) 180f else 0f)
+                IconButton(
+                    onClick = {
+                        Settings.shared.setLibrarySorting(
+                            sortingFilter,
+                            sorting.copy(direction = if (ascending) SortDirection.DESCENDING else SortDirection.ASCENDING),
+                        )
+                    },
+                ) {
+                    Icon(
+                        MetrolistIcons.Outlined.KeyboardArrowDown,
+                        contentDescription =
+                            stringResource(
+                                if (ascending) Res.string.playlist_direction_descending else Res.string.playlist_direction_ascending,
+                            ),
+                        modifier = Modifier.graphicsLayer { rotationZ = rotation },
+                    )
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onSearchToggle) {
+                Icon(
+                    if (isSearchOpen) MetrolistIcons.Default.Close else MetrolistIcons.Default.Search,
+                    contentDescription = text.search,
+                    tint = if (isSearchOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            IconButton(onClick = { onGridViewChange(!isGridView) }) {
+                Icon(
+                    if (isGridView) MetrolistIcons.AutoMirrored.Outlined.List else MetrolistIcons.Default.GridView,
+                    contentDescription = if (isGridView) text.list else text.grid,
+                )
+            }
+        }
     }
 }
