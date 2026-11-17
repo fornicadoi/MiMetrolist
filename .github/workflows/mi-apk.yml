@@ -72,13 +72,15 @@ jobs:
           set -euo pipefail
           if [ "${MI_UNSIGNED:-}" = "1" ]; then unset KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; fi
           base_version=$(sed -n 's/^appVersion=//p' gradle.properties)
-          # El sufijo "+mio" también desactiva el envío de errores al equipo de Metrolist.
-          echo "APP_VERSION=${base_version}+mio" >> "$GITHUB_ENV"
+          # Versión estilo nightly (14.0.0+abc1234): el actualizador de la app la reconoce y,
+          # por llevar "+", tampoco se envían errores al equipo de Metrolist.
+          app_version="${base_version}+${GITHUB_SHA::7}"
+          echo "APP_VERSION=${app_version}" >> "$GITHUB_ENV"
           ./gradlew :androidApp:assembleRelease \
             --no-daemon --no-configuration-cache \
             --init-script .github/mi/personal.init.gradle \
             -x :androidApp:lintVitalRelease \
-            "-PappVersion=${base_version}+mio" \
+            "-PappVersion=${app_version}" \
             "-Dorg.gradle.jvmargs=-Xmx7g -XX:MaxMetaspaceSize=1g -XX:+UseParallelGC -Dfile.encoding=UTF-8"
 
       - name: Reunir APK
@@ -101,8 +103,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release delete ultima --cleanup-tag --yes -R "$GITHUB_REPOSITORY" || true
-          gh release create ultima dist/MiMetrolist.apk -R "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" --latest \
+          upstream=$(cut -c1-7 .github/mi/upstream-sha 2>/dev/null || echo "?")
+          # La app busca actualizaciones en la versión con etiqueta "nightly" de este repositorio.
+          for tag in nightly ultima; do
+            gh release delete "$tag" --cleanup-tag --yes -R "$GITHUB_REPOSITORY" || true
+          done
+          gh release create nightly dist/MiMetrolist.apk -R "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --prerelease \
             --title "MiMetrolist $APP_VERSION ($(date -u +%Y-%m-%d))" \
-            --notes "Compilada desde ${GITHUB_SHA::7}. Descarga MiMetrolist.apk e instálala encima de la anterior."
+            --notes "Basada en la nightly de Metrolist ${upstream}. Descarga MiMetrolist.apk e instálala encima de la anterior, o actualiza desde Ajustes > Actualizaciones."

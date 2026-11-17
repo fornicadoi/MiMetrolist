@@ -1,34 +1,68 @@
 name: Mi sincronización
 
-# Trae cada día los cambios de MetrolistGroup/Metrolist y, si hubo novedades,
-# compila una APK nueva.
+# Cada 3 horas revisa la nightly de MetrolistGroup/Metrolist (la etiqueta "nightly",
+# que también incluye todo lo de las versiones oficiales). Si cambió, aplica esos
+# cambios sobre MiMetrolist y compila una APK nueva.
 
 on:
   schedule:
-    - cron: '17 9 * * *'
+    - cron: '23 */3 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
   actions: write
 
+concurrency:
+  group: mi-sync
+  cancel-in-progress: false
+
 jobs:
   sync:
     if: github.event.repository.fork
     runs-on: ubuntu-latest
     steps:
-      - name: Sincronizar con Metrolist
+      - name: Descargar MiMetrolist
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 1
+
+      - name: Aplicar cambios de la nightly de Metrolist
+        id: sync
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -uo pipefail
-          branch="${{ github.event.repository.default_branch }}"
-          if ! result=$(gh api -X POST "repos/$GITHUB_REPOSITORY/merge-upstream" -f branch="$branch" 2>&1); then
-            echo "::error::No se pudo sincronizar automáticamente: $result"
-            echo "::error::Entra en tu repositorio y usa 'Sync fork > Update branch'. Si hay conflictos, pídele ayuda a Claude."
-            exit 1
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          last=$(tr -d '[:space:]' < .github/mi/upstream-sha)
+          git remote add upstream https://github.com/MetrolistGroup/Metrolist.git
+          git fetch --no-tags --depth=1 upstream +refs/tags/nightly:refs/upstream/nightly
+          new=$(git rev-parse 'refs/upstream/nightly^{commit}')
+          if [ "$new" = "$last" ]; then
+            echo "La nightly de Metrolist no ha cambiado (${new::7})."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          echo "$result"
-          if [ "$(echo "$result" | jq -r '.merge_type')" != "none" ]; then
-            gh workflow run mi-apk.yml -R "$GITHUB_REPOSITORY" --ref "$branch"
+          git fetch --no-tags --depth=1 upstream "$last"
+          # Los workflows de Metrolist no se usan en esta copia, así que se excluyen.
+          git diff --binary "$last" "$new" -- . ':(exclude).github/workflows' > "$RUNNER_TEMP/upstream.patch"
+          if [ -s "$RUNNER_TEMP/upstream.patch" ]; then
+            if ! git apply --3way --index "$RUNNER_TEMP/upstream.patch"; then
+              echo "::error::Los cambios de Metrolist chocan con los de MiMetrolist en estos archivos:"
+              git diff --name-only --diff-filter=U || true
+              echo "::error::Pídele a Claude que resuelva el conflicto."
+              exit 1
+            fi
           fi
+          echo "$new" > .github/mi/upstream-sha
+          git add .github/mi/upstream-sha
+          git commit -q -m "sync: Metrolist nightly ${new::7}"
+          git push origin HEAD:${{ github.event.repository.default_branch }}
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Compilar APK nueva
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run mi-apk.yml -R "$GITHUB_REPOSITORY" --ref "${{ github.event.repository.default_branch }}"
