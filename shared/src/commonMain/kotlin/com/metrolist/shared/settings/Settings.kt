@@ -314,6 +314,17 @@ class Settings(
     var selectedThemeColor by preference(0L)
     var themePaletteStyle by preference(ThemePaletteStyle.TONAL_SPOT)
 
+    // MiMetrolist: estilo personal oscuro y sus opciones.
+    var mioStyle by preference(true)
+    var mioAccent by preference(MioAccent.VERDE)
+    var mioOled by preference(false)
+    var mioCorners by preference(MioCorners.RECTAS)
+    var mioBoldTitles by preference(true)
+    var mioHomeGreeting by preference(true)
+    var mioHomeShortcuts by preference(true)
+    var mioMiniPlayer by preference(MioMiniPlayer.TARJETA)
+    var mioNavBar by preference(MioNavBar.DEGRADADO)
+
     var appFont by preference(FontOption.SYSTEM)
     var androidCustomFontFile by preference(AndroidCustomFontFileKey, "")
     var androidCustomFontName by preference(AndroidCustomFontNameKey, "")
@@ -1305,14 +1316,19 @@ class Settings(
     }
 
     fun getCurrentThemeIsDark(): Boolean =
-        when (themeMode) {
-            ThemeMode.LIGHT -> false
-            ThemeMode.DARK, ThemeMode.PURE_BLACK -> true
-            ThemeMode.AUTO -> systemInDarkTheme
-        }
+        mioStyle ||
+            when (themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK, ThemeMode.PURE_BLACK -> true
+                ThemeMode.AUTO -> systemInDarkTheme
+            }
 
     fun isPureBlackTheme(darkTheme: Boolean = getCurrentThemeIsDark()): Boolean =
-        darkTheme && (themeMode == ThemeMode.PURE_BLACK || (themeMode == ThemeMode.AUTO && autoPureBlack))
+        if (mioStyle) {
+            mioOled
+        } else {
+            darkTheme && (themeMode == ThemeMode.PURE_BLACK || (themeMode == ThemeMode.AUTO && autoPureBlack))
+        }
 
     companion object {
         private val backupCredentialKeys =

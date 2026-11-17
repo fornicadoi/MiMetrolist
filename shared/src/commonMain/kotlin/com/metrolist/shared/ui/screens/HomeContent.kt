@@ -232,6 +232,10 @@ fun HomeContent(
         ) {
             header?.invoke(this)
 
+            if (mioGreetingEnabled()) {
+                item(key = "mio_greeting", contentType = "mio_greeting") { MioGreetingHeader() }
+            }
+
             renderHomeShelves(
                 shelves = effectiveShelves,
                 shuffleLabel = text.shuffle,
@@ -614,7 +618,15 @@ internal fun DefaultHomeShelf(
                 )
             }
 
-            HomeShelfStyle.SPEED_DIAL -> {
+            HomeShelfStyle.SPEED_DIAL -> if (mioShortcutsEnabled() && !isLandscape && !isWide) {
+                MioShortcutGrid(
+                    items = shelf.items,
+                    onItemClick = onItemClick,
+                    onItemLongClick = onSpeedDialItemLongClick,
+                    currentSongId = currentSongId,
+                    isItemEnabled = isItemEnabled,
+                )
+            } else {
                 HomeSpeedDialShelf(
                     shelf,
                     onItemClick,

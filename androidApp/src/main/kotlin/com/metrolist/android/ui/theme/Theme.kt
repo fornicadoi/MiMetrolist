@@ -45,7 +45,11 @@ import com.metrolist.shared.ui.theme.DefaultThemeColor
 import com.metrolist.shared.ui.theme.MetrolistShapes
 import com.metrolist.shared.ui.theme.ThemeColorExtractor
 import com.metrolist.shared.ui.theme.animateColorScheme
+import com.metrolist.shared.ui.theme.mioBold
+import com.metrolist.shared.ui.theme.mioColorScheme
+import com.metrolist.shared.ui.theme.mioShapes
 import com.metrolist.shared.ui.theme.orIfIllegible
+import com.metrolist.shared.ui.theme.resolve
 import com.metrolist.shared.ui.theme.pureBlack
 import com.metrolist.shared.ui.theme.themeColorScheme
 import kotlinx.coroutines.Dispatchers
@@ -116,14 +120,24 @@ fun MetrolistTheme(
             }
         }
 
+    val mioStyle = Settings.shared.mioStyle
+    val mioAccent = Settings.shared.mioAccent
+    val mioOled = Settings.shared.mioOled
     val colorScheme =
-        remember(baseColorScheme, pureBlack, darkTheme) {
-            if (darkTheme && pureBlack) {
+        remember(baseColorScheme, pureBlack, darkTheme, mioStyle, mioAccent, mioOled, themeColor) {
+            if (mioStyle) {
+                mioColorScheme(mioAccent.resolve(themeColor.takeIf { it != DefaultThemeColor }), mioOled)
+            } else if (darkTheme && pureBlack) {
                 baseColorScheme.pureBlack()
             } else {
                 baseColorScheme
             }
         }
+    val mioCorners = Settings.shared.mioCorners
+    val shapes = remember(mioStyle, mioCorners) { if (mioStyle) mioShapes() else MetrolistShapes }
+    val baseTypography = getAppTypography()
+    val typography =
+        if (mioStyle && Settings.shared.mioBoldTitles) remember(baseTypography) { baseTypography.mioBold() } else baseTypography
 
     val motionScheme = remember { MotionScheme.expressive() }
     val animatedColorScheme = animateColorScheme(colorScheme, motionScheme)
@@ -135,8 +149,8 @@ fun MetrolistTheme(
 
     MaterialExpressiveTheme(
         colorScheme = animatedColorScheme,
-        typography = getAppTypography(),
-        shapes = MetrolistShapes,
+        typography = typography,
+        shapes = shapes,
         motionScheme = motionScheme,
     ) {
         CompositionLocalProvider(LocalIsTv provides isTv) {

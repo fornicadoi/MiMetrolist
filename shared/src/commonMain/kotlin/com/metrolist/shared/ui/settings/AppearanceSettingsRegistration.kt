@@ -87,6 +87,7 @@ internal fun SettingsUiRegistryBuilder.registerAppearanceSettings(host: SharedSe
         tone = SettingsTone.ORANGE,
         subtitle = stringResource(Res.string.settings_appearance_overview),
     ) {
+        mioSettingsGroup()
         group("theme", stringResource(Res.string.appearance_theme)) {
             choice(
                 id = "themeMode",

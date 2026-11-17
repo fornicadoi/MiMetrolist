@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MiMetrolist: textos del estilo personal (solo en español). -->
+<resources>
+    <string name="mio_group_title">Mi estilo</string>
+    <string name="mio_group_description">Diseño oscuro tipo app de streaming, con tus propias opciones</string>
+    <string name="mio_style">Activar Mi estilo</string>
+    <string name="mio_style_description">Fondo oscuro, títulos gruesos y un color de acento a tu gusto</string>
+    <string name="mio_accent">Color de acento</string>
+    <string name="mio_accent_verde">Verde</string>
+    <string name="mio_accent_azul">Azul</string>
+    <string name="mio_accent_morado">Morado</string>
+    <string name="mio_accent_rosa">Rosa</string>
+    <string name="mio_accent_naranja">Naranja</string>
+    <string name="mio_accent_rojo">Rojo</string>
+    <string name="mio_accent_cian">Cian</string>
+    <string name="mio_accent_dorado">Dorado</string>
+    <string name="mio_accent_blanco">Blanco</string>
+    <string name="mio_accent_cancion">Color de la canción</string>
+    <string name="mio_oled">Negro total (OLED)</string>
+    <string name="mio_oled_description">Fondo completamente negro para ahorrar batería</string>
+    <string name="mio_corners">Esquinas</string>
+    <string name="mio_corners_rectas">Rectas</string>
+    <string name="mio_corners_suaves">Suaves</string>
+    <string name="mio_corners_redondas">Redondas</string>
+    <string name="mio_corners_muy_redondas">Muy redondas</string>
+    <string name="mio_bold_titles">Títulos en negrita</string>
+    <string name="mio_bold_titles_description">Letras gruesas en títulos y encabezados</string>
+    <string name="mio_home_greeting">Saludo en el inicio</string>
+    <string name="mio_home_greeting_description">Muestra “Buenos días”, “Buenas tardes” o “Buenas noches” arriba del inicio</string>
+    <string name="mio_home_shortcuts">Accesos rápidos en el inicio</string>
+    <string name="mio_home_shortcuts_description">Cuadrícula de dos columnas con tus listas y canciones recientes</string>
+    <string name="mio_mini_player">Reproductor pequeño</string>
+    <string name="mio_mini_player_tarjeta">Tarjeta con color de la carátula</string>
+    <string name="mio_mini_player_original">Original de Metrolist</string>
+    <string name="mio_nav_bar">Barra de navegación</string>
+    <string name="mio_nav_bar_degradado">Degradado a negro</string>
+    <string name="mio_nav_bar_solida">Sólida</string>
+    <string name="mio_nav_bar_original">Original de Metrolist</string>
+    <string name="mio_greeting_morning">Buenos días</string>
+    <string name="mio_greeting_afternoon">Buenas tardes</string>
+    <string name="mio_greeting_evening">Buenas noches</string>
+</resources>
