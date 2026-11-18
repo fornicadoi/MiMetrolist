@@ -121,7 +121,7 @@
     <string name="mio_focus_more">Más</string>
     <string name="mio_focus_music_query">lofi para estudiar</string>
     <string name="mio_hotkeys">Atajos globales (Windows)</string>
-    <string name="mio_hotkeys_description">Funcionan aunque estés en otra ventana. Ctrl+Alt+Espacio: reproducir o pausar. Ctrl+Alt+← / →: anterior o siguiente. Ctrl+Alt+↑ / ↓: volumen. Ctrl+Alt+K: me gusta. Ctrl+Alt+L: letras flotantes.</string>
+    <string name="mio_hotkeys_description">Funcionan aunque estés en otra ventana. Ctrl+Alt+Espacio: reproducir o pausar. Ctrl+Alt+← / →: anterior o siguiente. Ctrl+Alt+↑ / ↓: volumen. Ctrl+Alt+K: me gusta. Ctrl+Alt+L: letras flotantes. Dentro de la app, la tecla E abre el modo enfoque.</string>
     <string name="mio_transfer_action">Pasar mi biblioteca a %1$s</string>
     <string name="mio_transfer_description">Me gusta, listas propias, historial, artistas y álbumes. El otro dispositivo los mezcla con los suyos sin borrar nada.</string>
     <string name="mio_transfer_sending">Enviando tu biblioteca a %1$s…</string>

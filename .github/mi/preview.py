@@ -169,12 +169,14 @@ if wid:
         click(x + w - 4 - 32 * 3 - 16, y + 20)
         time.sleep(4)
         shot("07-letras-en-burbuja")
-    # Botón de audífonos de la barra de título: modo enfoque.
+    # Tecla E: modo enfoque.
     key("Escape")
-    click(108, 23)
+    click(250, 600)
+    time.sleep(1)
+    key("e")
     time.sleep(3)
     shot("09-modo-enfoque")
-    key("Escape")
+    key("e")
 close(proc, "frio")
 
 # Segundo arranque: ya con la caché creada al cerrar.

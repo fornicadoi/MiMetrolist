@@ -22,6 +22,7 @@ import com.metrolist.desktop.state.app.UiState
 import com.metrolist.desktop.state.playback.LyricsState
 import com.metrolist.desktop.state.playback.PlayerState
 import com.metrolist.desktop.web.DesktopWebViewAvailability
+import com.metrolist.shared.mio.MioFocus
 import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.ui.navigation.NavigationBackHandler
 import com.metrolist.shared.ui.playback.LocalPlaybackKeyFocus
@@ -533,6 +534,12 @@ internal fun handleShortcut(
 
         keyCodeMatches(keyCode, Key.F, AwtKeyEvent.VK_F) -> {
             toggleWindowFullscreen()
+            true
+        }
+
+        // MiMetrolist: E abre o cierra el modo enfoque.
+        keyCodeMatches(keyCode, Key.E, AwtKeyEvent.VK_E) -> {
+            MioFocus.visible = !MioFocus.visible
             true
         }
 
