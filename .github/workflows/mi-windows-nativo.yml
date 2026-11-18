@@ -11,6 +11,8 @@ on:
       - 'docs/**'
       - '**/*.md'
       - 'fastlane/**'
+      - '.github/mi/preview.py'
+      - '.github/workflows/mi-preview.yml'
 
 concurrency:
   group: mi-windows-nativo
