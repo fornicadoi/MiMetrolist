@@ -1,0 +1,93 @@
+name: Mi Windows nativo (experimental)
+
+# Compila la versión nativa (sin Java) de MiMetrolist para Windows x64.
+# Es experimental, igual que en Metrolist. Se publica como MiMetrolist-windows-nativo.zip.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: mi-windows-nativo
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  native:
+    if: github.event.repository.fork
+    runs-on: windows-latest
+    timeout-minutes: 150
+    env:
+      NATIVE_PLATFORM: windows-x64
+    steps:
+      - name: Preparar carpetas
+        shell: bash
+        run: echo "NATIVE_WORK=$RUNNER_TEMP/r6-native-image" >> "$GITHUB_ENV"
+
+      - name: Descargar código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Preparar Gradle y JDK 25
+        uses: ./.github/actions/prepare-ci-gradle
+        with:
+          cache-scope: mi-desktop-native
+          persist-configuration-cache: 'false'
+
+      - name: Generar iconos
+        uses: ./.github/actions/generate-icons
+
+      - name: Instalar GraalVM
+        shell: bash
+        run: |
+          python scripts/desktop-native-image/toolchain.py --platform "$NATIVE_PLATFORM" \
+            --cache "$RUNNER_TOOL_CACHE/metrolist-graalvm/archives" \
+            --destination "$RUNNER_TOOL_CACHE/metrolist-graalvm/current"
+          mkdir -p "$NATIVE_WORK/evidence"
+
+      - name: Instalar .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: metro-wv2-helper/global.json
+
+      - name: Compilar ayudante de inicio de sesión
+        shell: pwsh
+        run: |
+          dotnet publish metro-wv2-helper/metro-wv2-helper.csproj --configuration Release --runtime win-x64 --self-contained true --output desktopApp/src/desktopMain/resources/windows -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -p:PublishReadyToRun=true
+          if ($LASTEXITCODE -ne 0) { throw 'El ayudante de inicio de sesión no compiló' }
+
+      - name: Preparar entradas nativas
+        shell: bash
+        run: |
+          base_version=$(sed -n 's/^appVersion=//p' gradle.properties | tr -d '\r')
+          echo "APP_VERSION=${base_version}+${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+          ./gradlew -I scripts/desktop-native-image/prepare.init.gradle \
+            -PnativeExperimentDir="$NATIVE_WORK" -Pmetrolist.sourceRevision="$GITHUB_SHA" -Pmetrolist.debug=false \
+            "-PappVersion=${base_version}+${GITHUB_SHA::7}" \
+            :desktopApp:prepareNativeImage --no-daemon --no-build-cache --no-configuration-cache
+
+      - name: Compilar imagen nativa
+        shell: bash
+        run: |
+          python scripts/desktop-native-image/native_image.py --platform "$NATIVE_PLATFORM" \
+            --work "$NATIVE_WORK" --graalvm "$GRAALVM_HOME" --agent "$NATIVE_WORK/agent"
+
+      - name: Empaquetar
+        id: package
+        shell: bash
+        run: |
+          python scripts/desktop-native-image/package.py --platform "$NATIVE_PLATFORM" \
+            --image "$NATIVE_WORK/image" --output "$NATIVE_WORK/packages"
+
+      - name: Publicar en Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE: ${{ steps.package.outputs.path }}
+        run: |
+          set -euo pipefail
+          cp "$PACKAGE" "$RUNNER_TEMP/MiMetrolist-windows-nativo.zip"
+          gh release upload nightly "$RUNNER_TEMP/MiMetrolist-windows-nativo.zip" -R "$GITHUB_REPOSITORY" --clobber

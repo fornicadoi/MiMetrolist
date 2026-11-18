@@ -4,6 +4,10 @@
 
 package com.metrolist.shared.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -131,7 +135,17 @@ internal fun MioDailyMixesRow(
     LaunchedEffect(Unit) {
         mixes = runCatching { buildDailyMixes() }.getOrDefault(emptyList())
     }
-    if (mixes.isEmpty()) return
+    AnimatedVisibility(visible = mixes.isNotEmpty(), enter = fadeIn(tween(450)) + expandVertically(tween(450))) {
+        MixesContent(mixes, onPlaySongs, modifier)
+    }
+}
+
+@Composable
+private fun MixesContent(
+    mixes: List<DailyMix>,
+    onPlaySongs: (List<SongItem>) -> Unit,
+    modifier: Modifier,
+) {
     Column(modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(
             stringResource(Res.string.mio_mixes_title),

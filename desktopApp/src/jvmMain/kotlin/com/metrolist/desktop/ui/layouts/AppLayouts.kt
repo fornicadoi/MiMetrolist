@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -544,6 +545,10 @@ private fun ColumnScope.MainLayoutContent(
                         .background(if (Settings.shared.mioStyle) MioFrameColor else colorScheme.surfaceContainer)
                         .padding(8.dp),
             ) {
+                if (Settings.shared.mioStyle && maxWidth >= 1100.dp) {
+                    MioLibraryPanel(Modifier.width(300.dp).fillMaxHeight())
+                    Spacer(Modifier.width(8.dp))
+                }
                 StandardContentSurface(
                     route = route,
                     layoutState = layoutState,
