@@ -183,7 +183,11 @@ class PlaylistImportManager(
         coverUrl: String? = null,
         onProgress: (imported: Int, total: Int, currentSong: SongItem?) -> Unit = { _, _, _ -> },
     ): Result<ImportResult> {
-        val importSongs = if (destination == Destination.Favorites) songs.distinctBy { it.id } else songs
+        // MiMetrolist: YouTube Music answers STATUS_FAILED when the same video is added twice to a playlist,
+        // which happens when two source tracks match one song, so account playlists get each song once.
+        val accountDestination =
+            destination == Destination.NewSynced || (destination is Destination.EXISTING && !destination.playlist.isLocal)
+        val importSongs = if (destination == Destination.Favorites || accountDestination) songs.distinctBy { it.id } else songs
         var createdRemotePlaylistId: String? = null
         var importedSongCount = 0
         var resumablePlaylist: PlaylistEntity? = null

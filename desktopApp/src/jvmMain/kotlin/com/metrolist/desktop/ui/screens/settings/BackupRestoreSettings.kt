@@ -151,6 +151,7 @@ import com.metrolist.shared.generated.resources.import_status_saving_tracks
 import com.metrolist.shared.generated.resources.import_tracks_found
 import com.metrolist.shared.generated.resources.local_playlist
 import com.metrolist.shared.generated.resources.menu_paste
+import com.metrolist.shared.generated.resources.mio_import_incomplete
 import com.metrolist.shared.generated.resources.n_song
 import com.metrolist.shared.generated.resources.or
 import com.metrolist.shared.generated.resources.or_choose_existing_playlist
@@ -210,6 +211,10 @@ private enum class DesktopDestinationType {
 }
 
 private suspend fun resolveImportError(throwable: Throwable?): String {
+    // MiMetrolist: a partial import is not a failure; say how many songs made it.
+    if (throwable is PlaylistImportManager.IncompleteImportException) {
+        return getString(Res.string.mio_import_incomplete, throwable.importedSongCount, throwable.failedSongCount)
+    }
     val key = (throwable as? ImportException)?.errorKey ?: (throwable?.cause as? ImportException)?.errorKey
     return when (key) {
         ImportErrorKey.EmptyInput -> getString(Res.string.import_error_empty_input)

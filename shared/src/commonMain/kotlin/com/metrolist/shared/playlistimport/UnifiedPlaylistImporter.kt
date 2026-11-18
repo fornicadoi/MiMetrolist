@@ -308,7 +308,15 @@ object UnifiedPlaylistImporter {
                     onStateUpdate(ImportProgressState.SavingToLibrary(imported, total))
                 }
 
-            val finalResult = importResult.getOrThrow()
+            // MiMetrolist: songs YouTube Music refused do not undo the rest; finish with what was imported.
+            val finalResult =
+                importResult.getOrElse { error ->
+                    if (error is PlaylistImportManager.IncompleteImportException && error.importedSongCount > 0) {
+                        PlaylistImportManager.ImportResult(error.playlist, error.importedSongCount)
+                    } else {
+                        throw error
+                    }
+                }
             val destinationName =
                 when (destination) {
                     is PlaylistImportManager.Destination.EXISTING -> destination.playlist.name

@@ -160,6 +160,7 @@ import com.metrolist.shared.generated.resources.import_spotify_account_playlists
 import com.metrolist.shared.generated.resources.imported_playlist
 import com.metrolist.shared.generated.resources.liked_songs
 import com.metrolist.shared.generated.resources.local_playlist
+import com.metrolist.shared.generated.resources.mio_import_incomplete
 import com.metrolist.shared.generated.resources.n_song
 import com.metrolist.shared.generated.resources.or_choose_existing_playlist
 import com.metrolist.shared.generated.resources.playlist
@@ -256,6 +257,10 @@ private data class ApplePlaylistPreparation(
 )
 
 private suspend fun resolveImportError(throwable: Throwable?): String {
+    // MiMetrolist: a partial import is not a failure; say how many songs made it.
+    if (throwable is PlaylistImportManager.IncompleteImportException) {
+        return getString(Res.string.mio_import_incomplete, throwable.importedSongCount, throwable.failedSongCount)
+    }
     val key = (throwable as? ImportException)?.errorKey ?: (throwable?.cause as? ImportException)?.errorKey
     return when (key) {
         ImportErrorKey.EmptyInput -> getString(Res.string.import_error_empty_input)
