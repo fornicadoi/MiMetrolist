@@ -235,6 +235,9 @@ fun HomeContent(
             if (mioGreetingEnabled()) {
                 item(key = "mio_greeting", contentType = "mio_greeting") { MioGreetingHeader() }
             }
+            if (mioMixesEnabled() && onPlaySongs != null) {
+                item(key = "mio_daily_mixes", contentType = "mio_daily_mixes") { MioDailyMixesRow(onPlaySongs) }
+            }
 
             renderHomeShelves(
                 shelves = effectiveShelves,

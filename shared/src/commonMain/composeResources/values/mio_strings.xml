@@ -46,4 +46,22 @@
     <string name="mio_greeting_morning">Buenos días</string>
     <string name="mio_greeting_afternoon">Buenas tardes</string>
     <string name="mio_greeting_evening">Buenas noches</string>
+    <string name="mio_recap_card_title">Tu año en música %1$d</string>
+    <string name="mio_recap_card_subtitle">Lo que más escuchaste este año, en un resumen</string>
+    <string name="mio_recap_empty">Todavía no hay suficiente música escuchada este año. ¡Sigue escuchando y vuelve pronto!</string>
+    <string name="mio_recap_intro">Así sonó tu %1$d</string>
+    <string name="mio_recap_minutes_title">Este año escuchaste</string>
+    <string name="mio_recap_minutes">minutos de música</string>
+    <string name="mio_recap_top_artist_title">Tu artista número uno fue</string>
+    <string name="mio_recap_plays">%1$d reproducciones</string>
+    <string name="mio_recap_top_songs_title">Tus canciones más escuchadas</string>
+    <string name="mio_recap_top_artists_title">Tus artistas favoritos</string>
+    <string name="mio_recap_hour_title">Tu hora favorita para escuchar música</string>
+    <string name="mio_recap_hour">%1$s:00</string>
+    <string name="mio_recap_outro">Gracias por escuchar. ¡Nos vemos el próximo año!</string>
+    <string name="mio_mixes_title">Hecho para ti</string>
+    <string name="mio_mix_name">Mezcla diaria %1$d</string>
+    <string name="mio_mix_recent">Lo que escuchas ahora</string>
+    <string name="mio_daily_mixes">Mezclas diarias en el inicio</string>
+    <string name="mio_daily_mixes_description">Listas que se arman solas cada día con lo que más escuchas</string>
 </resources>

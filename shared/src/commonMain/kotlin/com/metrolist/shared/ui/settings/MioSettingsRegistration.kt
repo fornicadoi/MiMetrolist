@@ -116,6 +116,14 @@ internal fun SettingsPageRegistryBuilder.mioSettingsGroup() {
         ) { settings.mioHomeGreeting = it }
 
         switch(
+            id = "mioDailyMixes",
+            title = stringResource(Res.string.mio_daily_mixes),
+            description = stringResource(Res.string.mio_daily_mixes_description),
+            checked = settings.mioDailyMixes,
+            enabled = enabled,
+        ) { settings.mioDailyMixes = it }
+
+        switch(
             id = "mioHomeShortcuts",
             title = stringResource(Res.string.mio_home_shortcuts),
             description = stringResource(Res.string.mio_home_shortcuts_description),

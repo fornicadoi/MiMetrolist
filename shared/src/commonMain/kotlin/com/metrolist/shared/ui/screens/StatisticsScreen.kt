@@ -375,6 +375,9 @@ fun StatisticsScreen(
                                             HorizontalDivider(Modifier.padding(top = 8.dp))
                                         }
                                     }
+                                    if (mioRecapEnabled()) {
+                                        item { MioYearRecapCard(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
+                                    }
                                     item { PeriodButtons(state, onPeriodSelected, onModeSelected, onDateRangeSelected) }
                                     if (state.isLoading && !state.hasLoaded) {
                                         item { LoadingScreen(Modifier.fillMaxWidth().height(160.dp)) }
