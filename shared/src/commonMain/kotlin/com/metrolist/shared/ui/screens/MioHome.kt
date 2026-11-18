@@ -118,7 +118,7 @@ private fun MioShortcutTile(
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(mioCorner(10.dp))
+    val shape = RoundedCornerShape(4.dp)
     val displayItem = if (item is PlaylistItem) localizedBuiltinPlaylist(item) else item
     val title = (item as? SongItem)?.let(SongMetadataState::apply)?.title ?: displayItem.title
     Row(

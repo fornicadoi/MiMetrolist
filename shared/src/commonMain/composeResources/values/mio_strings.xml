@@ -39,6 +39,8 @@
     <string name="mio_download_light">Descargas ligeras</string>
     <string name="mio_download_light_description">Descarga solo el audio en la calidad más baja: archivos más pequeños y descargas más rápidas. No cambia la calidad al escuchar en línea</string>
     <string name="mio_search_title">Buscar</string>
+    <string name="mio_library_title">Tu biblioteca</string>
+    <string name="mio_search_placeholder">¿Qué quieres escuchar?</string>
     <string name="mio_explore_title">Explorar géneros</string>
     <string name="mio_genres">Salsa, Bachata, Merengue, Cumbia, Reguetón, Dembow, Baladas, Boleros, Pop latino, Rock en español, Vallenato, Merengue típico</string>
     <string name="mio_greeting_morning">Buenos días</string>

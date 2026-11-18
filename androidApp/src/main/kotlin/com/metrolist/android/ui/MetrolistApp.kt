@@ -256,6 +256,7 @@ import com.metrolist.shared.db.MusicDatabase
 import com.metrolist.shared.db.entities.KIND_DOWNLOAD
 import com.metrolist.shared.db.isHistoryPlaylistId
 import com.metrolist.shared.deviceconnect.DeviceConnectPairingHost
+import com.metrolist.shared.generated.resources.mio_library_title
 import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.action_login
 import com.metrolist.shared.generated.resources.action_not_now
@@ -1448,16 +1449,22 @@ fun MetrolistApp(
                                         contentWindowInsets = WindowInsets(0),
                                         topBar = {
                                             if (shouldShowTopBar) {
+                                                // MiMetrolist: avatar a la izquierda, título grande y fondo igual al de la app.
+                                                val mioTopBar = Settings.shared.mioStyle && !useFloatingTopBar && !hasDesktopCaption
                                                 val topBarTitle: @Composable () -> Unit = {
                                                     AppTitleWithUpdateWarning(
                                                         title =
                                                             when (navigationState.topLevelRoute) {
                                                                 Screen.Home -> {
-                                                                    stringResource(Res.string.home)
+                                                                    if (mioTopBar) "" else stringResource(Res.string.home)
                                                                 }
 
                                                                 Screen.Library -> {
-                                                                    stringResource(Res.string.filter_library)
+                                                                    if (mioTopBar) {
+                                                                        stringResource(Res.string.mio_library_title)
+                                                                    } else {
+                                                                        stringResource(Res.string.filter_library)
+                                                                    }
                                                                 }
 
                                                                 Screen.EasterEgg -> {
@@ -1555,7 +1562,7 @@ fun MetrolistApp(
                                                             )
                                                         }
                                                     }
-                                                    if (!hasDesktopCaption) {
+                                                    if (!hasDesktopCaption && !mioTopBar) {
                                                         appAccountButton(if (useFloatingTopBar) Modifier.floatingBarCircle() else Modifier)
                                                     }
                                                 }
@@ -1569,6 +1576,7 @@ fun MetrolistApp(
                                                     TopAppBar(
                                                         expandedHeight = TabTopBarHeight,
                                                         navigationIcon = {
+                                                            if (mioTopBar) appAccountButton(Modifier.padding(start = 4.dp))
                                                         },
                                                         title = topBarTitle,
                                                         subtitle = topBarSubtitle,
@@ -1579,17 +1587,26 @@ fun MetrolistApp(
                                                                 containerColor =
                                                                     if (pureBlack) {
                                                                         Color.Black
+                                                                    } else if (mioTopBar) {
+                                                                        MaterialTheme.colorScheme.surface
                                                                     } else {
                                                                         MaterialTheme.colorScheme.surfaceContainer
                                                                     },
                                                                 scrolledContainerColor =
                                                                     if (pureBlack) {
                                                                         Color.Black
+                                                                    } else if (mioTopBar) {
+                                                                        MaterialTheme.colorScheme.surface
                                                                     } else {
                                                                         MaterialTheme.colorScheme.surfaceContainer
                                                                     },
                                                                 titleContentColor = MaterialTheme.colorScheme.onSurface,
-                                                                actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                actionIconContentColor =
+                                                                    if (mioTopBar) {
+                                                                        MaterialTheme.colorScheme.onSurface
+                                                                    } else {
+                                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                                    },
                                                                 navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                                             ),
                                                     )
@@ -2166,7 +2183,12 @@ private fun AppTitleWithUpdateWarning(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLargeEmphasized,
+            style =
+                if (Settings.shared.mioStyle) {
+                    MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold)
+                } else {
+                    MaterialTheme.typography.titleLargeEmphasized
+                },
         )
         if (showWarning) {
             Text(

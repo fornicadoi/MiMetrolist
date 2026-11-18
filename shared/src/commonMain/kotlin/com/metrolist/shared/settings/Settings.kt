@@ -320,7 +320,7 @@ class Settings(
     var mioOled by preference(false)
     var mioCorners by preference(MioCorners.RECTAS)
     var mioBoldTitles by preference(true)
-    var mioHomeGreeting by preference(true)
+    var mioHomeGreeting by preference(false)
     var mioHomeShortcuts by preference(true)
     var mioMiniPlayer by preference(MioMiniPlayer.TARJETA)
     var mioNavBar by preference(MioNavBar.DEGRADADO)

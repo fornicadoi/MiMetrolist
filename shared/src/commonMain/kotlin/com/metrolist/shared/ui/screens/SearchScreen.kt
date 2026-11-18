@@ -59,6 +59,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.ui.theme.mioCorner
 import androidx.compose.ui.graphics.SolidColor
@@ -77,6 +78,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.shared.generated.resources.Res
+import com.metrolist.shared.generated.resources.mio_search_placeholder
 import com.metrolist.shared.generated.resources.remove_recent_search_action
 import com.metrolist.shared.model.AlbumItem
 import com.metrolist.shared.model.SearchFilter
@@ -282,9 +284,10 @@ fun SearchBar(
             val fieldScheme =
                 if (mio) {
                     baseScheme.copy(
-                        surfaceContainerHigh = Color(0xFF242424),
-                        onSurface = Color.White,
-                        onSurfaceVariant = Color(0xFFB3B3B3),
+                        surfaceContainerHigh = Color.White,
+                        onSurface = Color(0xFF121212),
+                        onSurfaceVariant = Color(0xFF4D4D4D),
+                        primary = Color(0xFF121212),
                     )
                 } else {
                     baseScheme
@@ -295,7 +298,7 @@ fun SearchBar(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 )
             Surface(
-                shape = if (mio) RoundedCornerShape(mioCorner(22.dp)) else SearchBarDefaults.inputFieldShape,
+                shape = if (mio) RoundedCornerShape(6.dp) else SearchBarDefaults.inputFieldShape,
                 content = {
                     SearchBarDefaults.InputField(
                         textFieldState = textFieldState,
@@ -305,7 +308,14 @@ fun SearchBar(
                             Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester),
-                        placeholder = { Text(text = placeholder, maxLines = 1, overflow = TextOverflow.Clip) },
+                        placeholder = {
+                            Text(
+                                text = if (mio) stringResource(Res.string.mio_search_placeholder) else placeholder,
+                                maxLines = 1,
+                                overflow = TextOverflow.Clip,
+                                fontWeight = if (mio) FontWeight.SemiBold else null,
+                            )
+                        },
                         leadingIcon = {
                             if (isQuerySubmitted) {
                                 IconButton(onClick = onBack, modifier = Modifier.size(48.dp), shapes = IconButtonDefaults.shapes()) {

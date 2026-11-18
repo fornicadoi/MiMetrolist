@@ -383,6 +383,11 @@ fun MiniPlayer(
                 isLoading = isPlaybackLoading && miniPlayerActive,
                 progress = { progress.value },
                 showProgress = !isLive && duration > 0L,
+                isLiked = SongLikeState.isLiked(song.id),
+                onLike = {
+                    hapticManager.toggle(!SongLikeState.isLiked(song.id))
+                    SongLikeState.toggleLike(song)
+                },
                 onExpand = {
                     hapticManager.perform(HapticEvent.PRESS)
                     onExpand()

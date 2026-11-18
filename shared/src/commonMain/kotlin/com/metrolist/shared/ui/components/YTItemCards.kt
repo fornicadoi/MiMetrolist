@@ -1168,7 +1168,7 @@ fun ListCard(
                     } else {
                         MaterialTheme.typography.bodyMedium.copy(lineHeight = 17.sp)
                     },
-                fontWeight = if (mio) FontWeight.SemiBold else FontWeight.Medium,
+                fontWeight = if (mio) FontWeight.Normal else FontWeight.Medium,
                 color = if (mio && isCurrent) MaterialTheme.colorScheme.primary else Color.Unspecified,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

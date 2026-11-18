@@ -41,7 +41,6 @@ import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.settings.displayName
 import com.metrolist.shared.ui.components.images.AsyncImage
 import com.metrolist.shared.ui.icons.MetrolistIcons
-import com.metrolist.shared.ui.theme.mioCorner
 
 internal val MioMiniPlayerHeight = 64.dp
 
@@ -55,6 +54,8 @@ internal fun MioMiniPlayerCard(
     isLoading: Boolean,
     progress: () -> Float,
     showProgress: Boolean,
+    isLiked: Boolean,
+    onLike: () -> Unit,
     onExpand: () -> Unit,
     onTogglePlay: () -> Unit,
     modifier: Modifier = Modifier,
@@ -64,7 +65,7 @@ internal fun MioMiniPlayerCard(
     // Oscurece el color de la carátula para que el texto blanco siempre se lea.
     val target = songColor?.let { lerp(it, Color.Black, 0.55f) } ?: base
     val background by animateColorAsState(target, label = "mioMiniPlayerColor")
-    val shape = RoundedCornerShape(mioCorner(14.dp))
+    val shape = RoundedCornerShape(8.dp)
     Box(
         modifier =
             modifier
@@ -83,7 +84,7 @@ internal fun MioMiniPlayerCard(
                 url = song.previewThumbnailUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(mioCorner(8.dp))),
+                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(4.dp)),
             )
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                 Text(
@@ -100,6 +101,14 @@ internal fun MioMiniPlayerCard(
                     color = Color.White.copy(alpha = 0.72f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+            }
+            IconButton(onClick = onLike) {
+                Icon(
+                    imageVector = if (isLiked) MetrolistIcons.Filled.Favorite else MetrolistIcons.Outlined.FavoriteBorder,
+                    contentDescription = null,
+                    tint = if (isLiked) MaterialTheme.colorScheme.primary else Color.White,
+                    modifier = Modifier.size(24.dp),
                 )
             }
             Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
