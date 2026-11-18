@@ -129,4 +129,10 @@
     <string name="mio_transfer_failed">No se pudo pasar la biblioteca con %1$s. Revisa que sigan conectados.</string>
     <string name="mio_transfer_received">Recibiste la biblioteca de %1$s: %2$d canciones, %3$d me gusta nuevos, %4$d listas y %5$d reproducciones.</string>
     <string name="mio_transfer_ok">Entendido</string>
+    <string name="mio_update_title_native">Nueva versión de MiMetrolist Nightly Nativo</string>
+    <string name="mio_update_title_nightly">Nueva versión de MiMetrolist Nightly</string>
+    <string name="mio_update_ready">Lista para descargar</string>
+    <string name="mio_update_ready_at">Lista para descargar · compilada %1$s</string>
+    <string name="mio_update_view">Ver actualización</string>
+    <string name="mio_update_later">Ahora no</string>
 </resources>

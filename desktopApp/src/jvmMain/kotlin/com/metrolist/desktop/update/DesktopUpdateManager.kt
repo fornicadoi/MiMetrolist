@@ -111,7 +111,9 @@ object DesktopUpdateManager {
         confirm: Boolean,
         currentVersion: String = BuildConfig.APP_VERSION,
     ): GitHubDesktopRelease? {
-        val nightly = releases.firstOrNull { it.isNightly } ?: return null
+        // MiMetrolist: the native build follows its own release, published only when a native package is ready.
+        val wantedTag = if (isNativeImage()) MIO_NATIVE_NIGHTLY_TAG else NIGHTLY_TAG
+        val nightly = releases.firstOrNull { it.tagName == wantedTag } ?: return null
         val asset = nightly.nightlyAsset ?: return null
         val result = checkNightly(currentVersion, nightly.targetCommit, asset.digest, Settings.shared.installedNightlyDigest)
         if (confirm) Settings.shared.installedNightlyDigest = result.installedDigest
@@ -294,10 +296,11 @@ data class GitHubDesktopRelease(
     @SerialName("target_commitish") val targetCommit: String? = null,
 ) {
     val version: String get() = tagName.removePrefix("v")
-    val isNightly: Boolean get() = tagName == NIGHTLY_TAG
+    val isNightly: Boolean get() = tagName == NIGHTLY_TAG || tagName == MIO_NATIVE_NIGHTLY_TAG
+    val isMioNativeNightly: Boolean get() = tagName == MIO_NATIVE_NIGHTLY_TAG
 
     /** Nightlies share one tag, so their package digest tells them apart. */
-    val updateKey: String get() = if (isNightly) "$NIGHTLY_TAG:${nightlyAsset?.digest}" else version
+    val updateKey: String get() = if (isNightly) "$tagName:${nightlyAsset?.digest}" else version
 
     // Nightly assets keep fixed names so their download links never change.
     val nightlyAsset: GitHubDesktopAsset?
@@ -329,6 +332,7 @@ data class GitHubDesktopAsset(
     val size: Long,
     val digest: String? = null,
     @SerialName("browser_download_url") val downloadUrl: String,
+    @SerialName("updated_at") val updatedAt: String? = null,
 )
 
 internal fun parseGitHubSHA256(value: String?): ByteArray {
@@ -389,6 +393,8 @@ internal fun desktopUpdateCheckIsDue(
     lastAttempt: Long,
     now: Long,
 ): Boolean = lastAttempt !in 1..now || now - lastAttempt >= 60 * 60 * 1_000L
+
+internal const val MIO_NATIVE_NIGHTLY_TAG = "nightly-nativo"
 
 internal fun isNativeImage(): Boolean = System.getProperty("org.graalvm.nativeimage.imagecode") == "runtime"
 

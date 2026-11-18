@@ -49,6 +49,7 @@ object UiState {
     var createPlaylistRequested by mutableStateOf(false)
     var updateReleases by mutableStateOf<List<GitHubDesktopRelease>>(emptyList())
     var availableUpdate by mutableStateOf<GitHubDesktopRelease?>(null)
+    var mioUpdateNotice by mutableStateOf<GitHubDesktopRelease?>(null)
     var canInstallUpdate by mutableStateOf(false)
     var isDownloadingUpdate by mutableStateOf(false)
     var updateDownloadError by mutableStateOf<String?>(null)

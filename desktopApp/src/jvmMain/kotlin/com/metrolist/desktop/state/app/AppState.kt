@@ -104,6 +104,11 @@ object AppState {
     private fun notifyUpdateAvailable() {
         val release = UiState.availableUpdate ?: return
         if (!Settings.shared.updateNotifications || Settings.shared.lastNotifiedUpdateVersion == release.updateKey) return
+        if (Settings.shared.mioStyle) {
+            Settings.shared.lastNotifiedUpdateVersion = release.updateKey
+            UiState.mioUpdateNotice = release
+            return
+        }
         scope.launch {
             Settings.shared.lastNotifiedUpdateVersion = release.updateKey
             val result =

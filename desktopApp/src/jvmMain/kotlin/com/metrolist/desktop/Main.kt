@@ -116,6 +116,7 @@ import com.metrolist.desktop.ui.components.FullscreenPlayerView
 import com.metrolist.desktop.ui.components.LocalCaptionBarInsets
 import com.metrolist.desktop.ui.components.MiniplayerWindow
 import com.metrolist.desktop.ui.components.MioFloatingPanelWindows
+import com.metrolist.desktop.ui.components.MioUpdateToast
 import com.metrolist.desktop.ui.components.ShortcutsOverlay
 import com.metrolist.desktop.ui.components.TokenLoginDialog
 import com.metrolist.desktop.ui.components.UpdateArtworkTheme
@@ -586,6 +587,7 @@ private fun WindowScope.AppContent(
             }
             MioFocusHost(nowPlaying = PlayerState.currentTrack?.title, inWindow = true)
             YouTubeSyncSnackbar(AppState.snackbarHostState)
+            MioUpdateToast(Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 112.dp))
             val snackbarScheme = rememberUpdatedState(colorScheme)
             SnackbarHost(AppState.snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter)) { data ->
                 val scheme = snackbarScheme.value

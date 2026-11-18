@@ -97,5 +97,17 @@ jobs:
           PACKAGE: ${{ steps.package.outputs.path }}
         run: |
           set -euo pipefail
-          cp "$PACKAGE" "$RUNNER_TEMP/MiMetrolist-windows-nativo.zip"
-          gh release upload nightly "$RUNNER_TEMP/MiMetrolist-windows-nativo.zip" -R "$GITHUB_REPOSITORY" --clobber
+          zip="$RUNNER_TEMP/MiMetrolist-windows-nativo.zip"
+          cp "$PACKAGE" "$zip"
+          # Versiones nativas anteriores la buscan en "nightly".
+          gh release upload nightly "$zip" -R "$GITHUB_REPOSITORY" --clobber
+          # Las nuevas siguen su propia versión, que solo cambia cuando hay un nativo listo.
+          tag=nightly-nativo
+          title="MiMetrolist Nightly Nativo ${APP_VERSION} ($(date -u +%Y-%m-%d))"
+          notes="Versión nativa (experimental) de MiMetrolist para Windows x64. Descomprime MiMetrolist-windows-nativo.zip y abre Metrolist.exe."
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$tag" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$title" --notes "$notes" --prerelease
+          else
+            gh release create "$tag" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$title" --notes "$notes" --prerelease
+          fi
+          gh release upload "$tag" "$zip" -R "$GITHUB_REPOSITORY" --clobber

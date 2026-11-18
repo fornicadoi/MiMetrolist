@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.metrolist.desktop.state.app.AppState
 import com.metrolist.desktop.state.app.UiState
+import com.metrolist.desktop.ui.components.mioUpdateTitle
 import com.metrolist.desktop.update.DesktopUpdateManager
 import com.metrolist.desktop.update.GitHubDesktopRelease
 import com.metrolist.shared.BuildConfig
@@ -44,7 +45,6 @@ import com.metrolist.shared.generated.resources.settings_check_releases_summary
 import com.metrolist.shared.generated.resources.settings_release_overview
 import com.metrolist.shared.generated.resources.update_downloading_manager
 import com.metrolist.shared.generated.resources.updates_auto_check
-import com.metrolist.shared.generated.resources.updates_available_title
 import com.metrolist.shared.generated.resources.updates_changelog_preview
 import com.metrolist.shared.generated.resources.updates_changelogs
 import com.metrolist.shared.generated.resources.updates_check
@@ -122,7 +122,7 @@ fun UpdatesSettingsScreen(colorScheme: ColorScheme) {
                         add(
                             Material3SettingsItem(
                                 icon = MetrolistIcons.Outlined.NewReleases,
-                                title = { Text(stringResource(Res.string.updates_available_title, pending.version)) },
+                                title = { Text(pending.mioUpdateTitle()) },
                                 description = { Text(stringResource(Res.string.settings_release_overview)) },
                                 onClick = { expandedRelease = pending },
                             ),
