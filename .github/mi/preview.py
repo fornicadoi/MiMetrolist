@@ -32,7 +32,9 @@ def env():
     settings = profile / "config" / "metrolist" / "settings.properties"
     if not settings.exists():
         settings.parent.mkdir(parents=True, exist_ok=True)
-        settings.write_text("desktopOnboardingInitialized=true\ndesktopOnboardingComplete=true\n", encoding="utf-8")
+        settings.write_text(
+            "desktopOnboardingInitialized=true\ndesktopOnboardingComplete=true\nmioLyricsFloating=true\n", encoding="utf-8"
+        )
     e["APPIMAGE_EXTRACT_AND_RUN"] = "1"
     e["LIBGL_ALWAYS_SOFTWARE"] = "1"
     e["SKIKO_RENDER_API"] = "SOFTWARE"
@@ -134,6 +136,27 @@ if wid:
     time.sleep(1)
     click(37, 172)
     time.sleep(3)
+    # Reproduce la primera selección rápida y abre la cola (acoplada) y las letras (flotantes).
+    click(533, 408)
+    time.sleep(12)
+    click(900, 30)
+    key("q")
+    time.sleep(1)
+    key("l")
+    time.sleep(8)
+    shot("06-cola-y-letras-flotantes")
+    r = sh("xdotool", "search", "--onlyvisible", "--name", "^Letras$")
+    floating = [line for line in r.stdout.split() if line.strip()]
+    log(f"ventanas flotantes de letras: {len(floating)}")
+    if floating:
+        geo = sh("xdotool", "getwindowgeometry", "--shell", floating[-1]).stdout
+        g = dict(line.split("=", 1) for line in geo.split() if "=" in line)
+        log(f"ventana de letras: {g}")
+        x, y, w = int(g["X"]), int(g["Y"]), int(g["WIDTH"])
+        # Botones de la barra: fijar, burbuja, acoplar, cerrar (32 px cada uno).
+        click(x + w - 4 - 32 * 3 - 16, y + 20)
+        time.sleep(4)
+        shot("07-letras-en-burbuja")
 close(proc, "frio")
 
 # Segundo arranque: ya con la caché creada al cerrar.
