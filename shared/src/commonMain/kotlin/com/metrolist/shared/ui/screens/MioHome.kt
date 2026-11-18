@@ -83,6 +83,7 @@ internal fun MioShortcutGrid(
     currentSongId: State<String?>,
     isItemEnabled: (YTItem) -> Boolean,
     modifier: Modifier = Modifier,
+    columns: Int = 2,
 ) {
     val shown = items.take(8)
     if (shown.isEmpty()) return
@@ -90,7 +91,7 @@ internal fun MioShortcutGrid(
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        shown.chunked(2).forEach { row ->
+        shown.chunked(columns).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { item ->
                     MioShortcutTile(
@@ -102,7 +103,7 @@ internal fun MioShortcutGrid(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
+                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }

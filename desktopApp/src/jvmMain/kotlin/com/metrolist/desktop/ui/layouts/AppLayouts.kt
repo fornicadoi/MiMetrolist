@@ -101,6 +101,7 @@ import com.metrolist.shared.generated.resources.menu_history
 import com.metrolist.shared.generated.resources.statistics
 import com.metrolist.shared.settings.NavItem
 import com.metrolist.shared.settings.NavigationId
+import androidx.compose.ui.graphics.Color
 import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.settings.defaultOpenTabRoot
 import com.metrolist.shared.settings.desktopDefaultOpenTab
@@ -232,7 +233,7 @@ private fun DesktopNavigationScaffold(
             NavigationSuiteDefaults.colors(
                 wideNavigationRailColors =
                     WideNavigationRailDefaults.colors(
-                        containerColor = colorScheme.surfaceContainer,
+                        containerColor = if (Settings.shared.mioStyle) MioFrameColor else colorScheme.surfaceContainer,
                     ),
             ),
         containerColor = colorScheme.background,
@@ -540,7 +541,7 @@ private fun ColumnScope.MainLayoutContent(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(colorScheme.surfaceContainer)
+                        .background(if (Settings.shared.mioStyle) MioFrameColor else colorScheme.surfaceContainer)
                         .padding(8.dp),
             ) {
                 StandardContentSurface(
@@ -667,8 +668,8 @@ private fun StandardContentSurface(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        color = colorScheme.surface,
+        shape = RoundedCornerShape(if (Settings.shared.mioStyle) 8.dp else 16.dp),
+        color = if (Settings.shared.mioStyle) MioPanelColor else colorScheme.surface,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AppContentHost(
@@ -689,3 +690,7 @@ private fun StandardContentSurface(
         }
     }
 }
+
+// MiMetrolist: marco negro y paneles casi negros.
+internal val MioFrameColor = Color.Black
+internal val MioPanelColor = Color(0xFF121212)

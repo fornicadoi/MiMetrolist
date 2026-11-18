@@ -317,7 +317,7 @@ class Settings(
     // MiMetrolist: estilo personal oscuro y sus opciones.
     var mioStyle by preference(true)
     var mioAccent by preference(MioAccent.VERDE)
-    var mioOled by preference(false)
+    var mioOled by preference(true)
     var mioCorners by preference(MioCorners.RECTAS)
     var mioBoldTitles by preference(true)
     var mioHomeGreeting by preference(false)

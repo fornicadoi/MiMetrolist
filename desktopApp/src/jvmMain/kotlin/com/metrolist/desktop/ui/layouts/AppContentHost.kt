@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
+import com.metrolist.shared.settings.Settings
 import com.metrolist.desktop.deviceconnect.DesktopDeviceConnect
 import com.metrolist.desktop.state.app.AppState
 import com.metrolist.desktop.state.app.UiState
@@ -137,9 +138,10 @@ fun AppContentHost(
         PlayerState.listenTogetherPlaybackRequests.collect { pendingPlaybackRequest = it }
     }
     LaunchedEffect(route) { LayoutUtils.syncContentState(route) }
-    val contentShape = RoundedCornerShape(16.dp)
+    val mio = Settings.shared.mioStyle
+    val contentShape = RoundedCornerShape(if (mio) 8.dp else 16.dp)
     Box(
-        modifier = modifier.background(colorScheme.surface, contentShape).clip(contentShape),
+        modifier = modifier.background(if (mio) MioPanelColor else colorScheme.surface, contentShape).clip(contentShape),
     ) {
         key(LayoutUtils.contentRefreshKey) {
             NavigationTransition(route = route) { destination ->

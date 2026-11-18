@@ -284,9 +284,14 @@ fun MetrolistPlayPauseButton(
         animationSpec = spring(dampingRatio = 0.75f),
     )
 
-    val width by animateDpAsState(if (isWide) 120.dp else 56.dp)
-    val height = 48.dp
-    val shapeRadius = 24.dp
+    // MiMetrolist: botón redondo blanco con icono negro, sin texto.
+    val mio = Settings.shared.mioStyle
+    val showLabel = isWide && !mio
+    val width by animateDpAsState(if (mio) 44.dp else if (isWide) 120.dp else 56.dp)
+    val height = if (mio) 44.dp else 48.dp
+    val shapeRadius = if (mio) 22.dp else 24.dp
+    val buttonContainer = if (mio) Color.White else colorScheme.primaryContainer
+    val buttonContent = if (mio) Color.Black else colorScheme.onPrimaryContainer
     val loadingDescription = stringResource(Res.string.loading)
 
     FilledTonalButton(
@@ -298,8 +303,8 @@ fun MetrolistPlayPauseButton(
         shapes = ButtonDefaults.shapes(shape = RoundedCornerShape(shapeRadius)),
         colors =
             ButtonDefaults.filledTonalButtonColors(
-                containerColor = if (isHovered) colorScheme.primaryContainer.copy(alpha = 0.9f) else colorScheme.primaryContainer,
-                contentColor = colorScheme.onPrimaryContainer,
+                containerColor = if (isHovered) buttonContainer.copy(alpha = 0.9f) else buttonContainer,
+                contentColor = buttonContent,
             ),
         contentPadding = PaddingValues(0.dp),
         onClick = onClick,
@@ -321,18 +326,18 @@ fun MetrolistPlayPauseButton(
                 if (playing == null) {
                     LoadingIndicator(
                         modifier = Modifier.size(24.dp).semantics { contentDescription = loadingDescription },
-                        color = colorScheme.onPrimaryContainer,
+                        color = buttonContent,
                     )
                 } else {
                     Icon(
                         imageVector = if (playing) MetrolistIcons.Rounded.Pause else MetrolistIcons.Rounded.PlayArrow,
                         contentDescription = null,
-                        modifier = Modifier.size(if (isWide) 24.dp else 32.dp),
-                        tint = colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(if (mio) 26.dp else if (isWide) 24.dp else 32.dp),
+                        tint = buttonContent,
                     )
                 }
             }
-            if (isWide && !isLoading) {
+            if (showLabel && !isLoading) {
                 Spacer(Modifier.width(8.dp))
                 AnimatedContent(
                     targetState =
@@ -376,12 +381,15 @@ fun PlayerSlider(
     showThumb: Boolean = true,
     valueProvider: () -> Float = { value },
 ) {
+    // MiMetrolist: barra delgada y blanca.
+    val mio = Settings.shared.mioStyle
+    val color = if (mio) Color.White else color
     PlaybackProgressSlider(
         value = value,
         valueProvider = valueProvider,
         onValueChange = onValueChange,
         onValueChangeFinished = onValueChangeFinished,
-        style = style,
+        style = if (mio) SliderStyle.SLIM else style,
         isPlaying = isPlaying,
         enabled = enabled,
         showThumb = showThumb,

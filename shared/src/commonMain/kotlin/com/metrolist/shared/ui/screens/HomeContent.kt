@@ -570,8 +570,9 @@ internal fun DefaultHomeShelf(
     onPlaySongs: ((List<SongItem>) -> Unit)? = null,
 ) {
     val isVideoShelf = shelf.style != HomeShelfStyle.SPEED_DIAL && !shelf.compactRows && shelf.items.isVideoShelf()
-    Column(Modifier.fillMaxWidth()) {
-        HomeShelfHeader(
+    val mioShortcuts = shelf.style == HomeShelfStyle.SPEED_DIAL && mioShortcutsEnabled() && (isWide || !isLandscape)
+    Column(Modifier.fillMaxWidth().then(if (mioShortcuts) Modifier.padding(top = 8.dp) else Modifier)) {
+        if (!mioShortcuts) HomeShelfHeader(
             shelf,
             shuffleLabel,
             if (isVideoShelf) onVideoItemClick else onItemClick,
@@ -618,9 +619,10 @@ internal fun DefaultHomeShelf(
                 )
             }
 
-            HomeShelfStyle.SPEED_DIAL -> if (mioShortcutsEnabled() && !isLandscape && !isWide) {
+            HomeShelfStyle.SPEED_DIAL -> if (mioShortcutsEnabled() && (isWide || !isLandscape)) {
                 MioShortcutGrid(
                     items = shelf.items,
+                    columns = if (isWide) 4 else 2,
                     onItemClick = onItemClick,
                     onItemLongClick = onSpeedDialItemLongClick,
                     currentSongId = currentSongId,
