@@ -1743,8 +1743,6 @@ fun MetrolistApp(
                                                             authManager,
                                                             context,
                                                             coroutineScope,
-                                                            pendingSearchQuery,
-                                                            pendingRoomCode,
                                                             floatingActionsBottomInset,
                                                             homeScrollToTopEvents,
                                                             libraryScrollToTopEvents,
@@ -1755,8 +1753,9 @@ fun MetrolistApp(
                                                                 authManager,
                                                                 context,
                                                                 coroutineScope,
-                                                                pendingSearchQuery,
-                                                                pendingRoomCode,
+                                                                { pendingSearchQuery },
+                                                                { pendingSearchQuery = null },
+                                                                { pendingRoomCode },
                                                                 floatingActionsBottomInset,
                                                                 homeScrollToTopEvents,
                                                                 libraryScrollToTopEvents,
@@ -2525,8 +2524,10 @@ fun getEntryProvider(
     authManager: AuthManager,
     context: Context,
     scope: CoroutineScope,
-    pendingSearchQuery: String?,
-    pendingRoomCode: String?,
+    // Getters: nav3 keeps a retained entry's content across provider changes, so entries must read the current value.
+    pendingSearchQuery: () -> String?,
+    onSearchQueryConsumed: () -> Unit,
+    pendingRoomCode: () -> String?,
     floatingActionsBottomInset: State<Dp>,
     homeScrollToTopEvents: SharedFlow<Long>,
     libraryScrollToTopEvents: SharedFlow<Long>,
@@ -2620,7 +2621,8 @@ fun getEntryProvider(
             SearchScreen(
                 navigator = navigator,
                 floatingActionsBottomInset = floatingActionsBottomInset,
-                initialQuery = pendingSearchQuery,
+                initialQuery = pendingSearchQuery(),
+                onInitialQueryConsumed = onSearchQueryConsumed,
                 onSearchResultsVisible = onSearchResultsVisible,
             )
         }
@@ -2816,7 +2818,7 @@ fun getEntryProvider(
 
         entry<Screen.ListenTogether>(metadata = navTabMetadata) {
             ListenTogetherScreen(
-                initialRoomCode = pendingRoomCode,
+                initialRoomCode = pendingRoomCode(),
                 onNavigateBack = { navigator.goBack() },
                 onNavigateToSettings = { navigator.navigate(Screen.ListenTogetherSettings) },
             )

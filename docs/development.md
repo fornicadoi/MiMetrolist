@@ -101,6 +101,8 @@ The `taskbar` command refreshes Windows' four 75 px ICO glyphs under `desktopApp
 
 Android's standard and retained-root navigation hosts scope Playlist, Album, Artist, Browse and About Artist ViewModels, and the built-in history playlist's HistoryViewModel, to their entries. Back keeps their stores and saved UI state for Forward. New navigation discards forward history and clears abandoned stores after outgoing content leaves composition. Root and player ViewModels use the activity scope. Forward history saves each route's source tab across recreation. Discarding a detail entry cancels loading and collectors. Playlist and history edits, artist subscriptions and automatic download preparation run in the application scope; their result callbacks stop when the ViewModel clears. Clearing a playlist entry commits its pending drag reorder. Queued downloads belong to the download manager.
 
+The Android build rewrites navigation3-ui's `NavDisplay` so a scene without a recorded z-index animates as z-index 0. In 1.3.0-alpha04, `NavDisplay` drops the z-indices of settled scenes that `AnimatedContent` can still build transitions for, and the lookup crashed with `There is no key AnimatedSceneKey`. Remove `NavDisplayZIndexFallback` from `androidApp/build.gradle.kts` once a navigation3 release fixes this.
+
 Desktop uses the same navigator with a separate page host. Neither desktop nor iOS calls `toEntries`. iOS artist, album and browse loaders belong to live back-stack entries, so Back reuses loaded pages; popping an entry cancels its work, and session or content-locale changes replace retained detail state. Desktop reuses a retained album only when its ID and session match; explicit refresh reloads it.
 
 Android requires a second completed Back within two seconds to exit from the start destination. In-app navigation and overlay dismissal take one Back. Leaving the start destination, expanding the player or pausing the activity clears a pending exit confirmation.
@@ -394,6 +396,8 @@ Legacy database conversion removes dangling children covered by cascading foreig
 ### Casting
 
 Android and desktop share the JVM cast sessions. Connecting and replacing media preserve receiver volume for Google Cast, DLNA/Sonos and FCast; only explicit adjustments send volume commands. Receiver reports supply remote volume state. Song changes replace media in the existing session. The stream proxy keeps TCP port `57643` and changes its URL token for each song. See the [Linux firewall setup](install/linux.md#sonos-and-dlna-with-firewalld) for SSDP reply and stream rules. Discovery lists each Sonos group once, at its coordinator from `ZoneGroupTopology`, because grouped, bonded and satellite speakers reject transport commands. Unreadable DLNA device descriptions are logged once per location in the playback log.
+
+Desktop song selection, skips, receiver EOF and Radio use one transition owner. A new selection cancels the pending job, and EOF waits while a selection resolves. Media replacement keeps the receiver connected and publishes the loaded queue occurrence. Failed resolution stops the old receiver before selecting the failed song. Disconnect cancels cast resolution and continues the selected occurrence locally. Starting Radio from the current cast song keeps its receiver position and playback intent. DLNA/Sonos completion uses the last PLAYING position and the measured poll interval when STOPPED resets RelTime. Explicit Stop requests do not advance the queue.
 
 ### Discord
 
