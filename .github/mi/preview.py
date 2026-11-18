@@ -142,3 +142,8 @@ proc, wid = launch("tibio")
 close(proc, "tibio")
 
 (out / "tiempos.txt").write_text("\n".join(timings) + "\n", encoding="utf-8")
+# Diagnóstico: qué archivos de ajustes creó la app.
+listing = sh("find", str(profile), "-maxdepth", "4", "-type", "f").stdout
+(out / "perfil.txt").write_text(listing, encoding="utf-8")
+for found in profile.rglob("settings.properties"):
+    (out / ("ajustes-" + found.parent.name + ".txt")).write_text(found.read_text(errors="replace"), encoding="utf-8")
