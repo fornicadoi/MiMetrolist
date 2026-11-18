@@ -1,0 +1,70 @@
+name: Mi vista previa
+
+# Compila la versión de escritorio (Linux, misma interfaz que Windows), la abre en una
+# pantalla virtual, mide el arranque y publica capturas en la versión "preview".
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: mi-preview
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  preview:
+    if: github.event.repository.fork
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Liberar espacio en disco
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+
+      - name: Descargar código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Preparar Gradle y JDK 25
+        uses: ./.github/actions/prepare-ci-gradle
+        with:
+          cache-scope: mi-desktop-linux
+          persist-configuration-cache: 'false'
+
+      - name: Generar iconos
+        uses: ./.github/actions/generate-icons
+
+      - name: Compilar app de escritorio
+        run: ./scripts/build_appimage.sh -Pmetrolist.verifyPackaging=false
+
+      - name: Instalar pantalla virtual
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth openbox xdotool imagemagick libgl1-mesa-dri \
+            libasound2t64 libdrm2 libegl1 libfontconfig1 libfreetype6 libgl1 libpulse0 \
+            libva-drm2 libva2 libx11-6 libxcb-shm0 fonts-noto-color-emoji
+
+      - name: Abrir la app, medir y capturar
+        run: |
+          xvfb-run -a -s '-screen 0 1366x768x24' bash -c '
+            openbox & sleep 1
+            python3 .github/mi/preview.py dist/Metrolist.AppImage "$RUNNER_TEMP/preview/capturas"
+          '
+          cat "$RUNNER_TEMP/preview/capturas/tiempos.txt" || true
+
+      - name: Publicar capturas
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/preview"
+          test -d capturas || exit 0
+          zip -qr capturas.zip capturas
+          gh release delete preview --cleanup-tag --yes -R "$GITHUB_REPOSITORY" || true
+          gh release create preview capturas.zip -R "$GITHUB_REPOSITORY" --prerelease \
+            --target "$GITHUB_SHA" --title "Vista previa ${GITHUB_SHA::7}" \
+            --notes "Capturas automáticas de la app de escritorio (solo para revisión)."
