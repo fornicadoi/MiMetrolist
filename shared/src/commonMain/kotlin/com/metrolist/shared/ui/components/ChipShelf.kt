@@ -1,6 +1,15 @@
 package com.metrolist.shared.ui.components
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -139,6 +148,10 @@ fun ExpressiveFilterChip(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    if (Settings.shared.mioStyle) {
+        MioPillChip(selected, onClick, label, modifier, enabled)
+        return
+    }
     ToggleButton(
         checked = selected,
         onCheckedChange = { onClick() },
@@ -169,5 +182,32 @@ fun ExpressiveFilterChip(
                 .semantics { this.selected = selected },
     ) {
         label()
+    }
+}
+
+/** MiMetrolist: píldora con borde gris; la seleccionada se rellena con el color de acento. */
+@Composable
+private fun MioPillChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: @Composable () -> Unit,
+    modifier: Modifier,
+    enabled: Boolean,
+) {
+    val container = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
+    val content = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    Box(
+        modifier =
+            modifier
+                .height(32.dp)
+                .clip(CircleShape)
+                .background(container)
+                .then(if (selected) Modifier else Modifier.border(1.dp, Color(0xFF777777), CircleShape))
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(horizontal = 16.dp)
+                .semantics { this.selected = selected },
+        contentAlignment = Alignment.Center,
+    ) {
+        CompositionLocalProvider(LocalContentColor provides content) { label() }
     }
 }

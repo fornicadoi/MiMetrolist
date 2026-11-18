@@ -760,7 +760,12 @@ private fun <T> SlimNavigationBarContent(
                         contentDescription = item.label,
                     )
                 },
-                label = null,
+                label =
+                    if (mioNavBar != MioNavBar.ORIGINAL) {
+                        { Text(item.label, style = MaterialTheme.typography.labelSmall, maxLines = 1) }
+                    } else {
+                        null
+                    },
                 iconPosition =
                     if (isCompact) {
                         NavigationItemIconPosition.Top

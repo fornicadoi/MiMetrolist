@@ -282,10 +282,9 @@ fun SearchBar(
             val fieldScheme =
                 if (mio) {
                     baseScheme.copy(
-                        surfaceContainerHigh = Color.White,
-                        onSurface = Color(0xFF121212),
-                        onSurfaceVariant = Color(0xFF555555),
-                        primary = Color(0xFF121212),
+                        surfaceContainerHigh = Color(0xFF242424),
+                        onSurface = Color.White,
+                        onSurfaceVariant = Color(0xFFB3B3B3),
                     )
                 } else {
                     baseScheme
@@ -296,7 +295,7 @@ fun SearchBar(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 )
             Surface(
-                shape = if (mio) RoundedCornerShape(mioCorner(10.dp)) else SearchBarDefaults.inputFieldShape,
+                shape = if (mio) RoundedCornerShape(mioCorner(22.dp)) else SearchBarDefaults.inputFieldShape,
                 content = {
                     SearchBarDefaults.InputField(
                         textFieldState = textFieldState,

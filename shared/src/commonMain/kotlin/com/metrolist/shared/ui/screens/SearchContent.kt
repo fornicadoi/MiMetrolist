@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import com.metrolist.shared.ui.components.ListCard
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -448,6 +449,22 @@ private fun SearchEmptyState(
                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                 modifier = Modifier.focusGroup().focusRestorer(),
                             )
+                        } else if (Settings.shared.mioStyle) {
+                            // MiMetrolist: búsquedas recientes como lista vertical.
+                            Column(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                recentSearchItems.take(10).forEach { item ->
+                                    MioRecentSearchRow(
+                                        item = item,
+                                        text = text,
+                                        onClick = { onRecentItemClick(item) },
+                                        onLongClickLabel = text.removeRecentSearchItemAction,
+                                        onLongClick = { recentItemToRemove = item },
+                                    )
+                                }
+                            }
                         } else {
                             val recentSearchState = rememberLazyListState()
                             LazyRow(
@@ -2232,5 +2249,31 @@ private fun NoResultsFound(
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MioRecentSearchRow(
+    item: YTItem,
+    text: SearchContentText,
+    onClick: () -> Unit,
+    onLongClickLabel: String,
+    onLongClick: () -> Unit,
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClickLabel = onLongClickLabel, onLongClick = onLongClick),
+    ) {
+        ListCard(
+            title = item.displayTitle,
+            subtitle = searchItemSubtitle(item, text),
+            thumbnail = item.displayThumbnailUrl,
+            icon = null,
+            artistId = (item as? ArtistItem)?.id,
+            isPlaylistArtwork = item is PlaylistItem,
+            artworkAspectRatio = item.thumbnailAspectRatio,
+        )
     }
 }

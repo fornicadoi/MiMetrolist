@@ -1137,10 +1137,10 @@ fun ListCard(
 ) {
     // MiMetrolist: filas más altas, carátula más grande y título más marcado.
     val mio = Settings.shared.mioStyle
-    val artSize = if (mio) 56.dp else 48.dp
+    val artSize = if (mio) 64.dp else 48.dp
     val cornerRadius = if (mio) mioCorner(ThumbnailCornerRadius) else ThumbnailCornerRadius
     Row(
-        Modifier.fillMaxWidth().height(if (mio) 64.dp else 48.dp),
+        Modifier.fillMaxWidth().height(if (mio) 68.dp else 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Artwork(
