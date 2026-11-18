@@ -28,6 +28,11 @@ def env():
         d.mkdir(parents=True, exist_ok=True)
         e[f"XDG_{kind}_HOME"] = str(d)
     e["HOME"] = str(profile)
+    # Salta el asistente de bienvenida para llegar directo al inicio.
+    settings = profile / "config" / "metrolist" / "settings.properties"
+    if not settings.exists():
+        settings.parent.mkdir(parents=True, exist_ok=True)
+        settings.write_text("desktopOnboardingComplete=true\n", encoding="utf-8")
     e["APPIMAGE_EXTRACT_AND_RUN"] = "1"
     e["LIBGL_ALWAYS_SOFTWARE"] = "1"
     e["SKIKO_RENDER_API"] = "SOFTWARE"
