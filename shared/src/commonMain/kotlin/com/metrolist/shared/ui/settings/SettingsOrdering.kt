@@ -9,6 +9,7 @@ internal fun List<SettingsGroupRegistration>.prioritized(page: SettingsPageId): 
                 listOf(
                     "mioStyle",
                     "mioAlarm",
+                    "mioAuto",
                     "theme",
                     "playerAppearance",
                     "tabs",

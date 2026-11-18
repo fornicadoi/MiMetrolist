@@ -216,3 +216,35 @@ internal fun SettingsPageRegistryBuilder.mioAlarmGroup() {
         ) { settings.mioAlarmSource = MioAlarmSource.valueOf(it) }
     }
 }
+
+@Composable
+internal fun SettingsPageRegistryBuilder.mioAutoGroup() {
+    if (isDesktop) return
+    val settings = Settings.shared
+    group(id = "mioAuto", title = stringResource(Res.string.mio_auto_group)) {
+        switch(
+            id = "mioAutoDownload",
+            title = stringResource(Res.string.mio_auto_download),
+            description = stringResource(Res.string.mio_auto_download_description),
+            checked = settings.mioAutoDownload,
+        ) { settings.mioAutoDownload = it }
+        slider(
+            id = "mioAutoDownloadMax",
+            title = stringResource(Res.string.mio_auto_download_max),
+            valueLabel = settings.mioAutoDownloadMaxSongs.toString(),
+            value = settings.mioAutoDownloadMaxSongs.toFloat(),
+            range = 50f..1000f,
+            steps = 18,
+            enabled = settings.mioAutoDownload,
+        ) { settings.mioAutoDownloadMaxSongs = ((it / 50f).toInt() * 50).coerceIn(50, 1000) }
+        switch(
+            id = "mioAutoBackup",
+            title = stringResource(Res.string.mio_auto_backup),
+            description = stringResource(Res.string.mio_auto_backup_description),
+            checked = settings.mioAutoBackup,
+        ) {
+            settings.mioAutoBackup = it
+            if (!it) settings.mioAutoBackupFolder = ""
+        }
+    }
+}

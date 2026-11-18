@@ -333,6 +333,12 @@ class Settings(
     var mioReleaseAlerts by preference(true)
     var mioReleasesSeen by preference("")
     var mioReleasesCheckedAt by preference(0L)
+    var mioAutoDownload by preference(false)
+    var mioAutoDownloadMaxSongs by preference(300)
+    var mioAutoDownloadedIds by preference("")
+    var mioAutoBackup by preference(false)
+    var mioAutoBackupFolder by preference("")
+    var mioAutoBackupLastAt by preference(0L)
 
     var appFont by preference(FontOption.SYSTEM)
     var androidCustomFontFile by preference(AndroidCustomFontFileKey, "")

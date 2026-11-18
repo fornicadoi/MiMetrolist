@@ -37,7 +37,8 @@ object MioReleaseNotifier {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         manager.cancel(pending)
-        if (!Settings.shared.mioReleaseAlerts) return
+        val settings = Settings.shared
+        if (!settings.mioReleaseAlerts && !settings.mioAutoDownload && !settings.mioAutoBackup) return
         manager.setInexactRepeating(
             AlarmManager.RTC,
             MioAlarmScheduler.nextTrigger(13, 0),
@@ -105,7 +106,7 @@ class MioReleaseReceiver : BroadcastReceiver() {
         launchAsync {
             try {
                 (context.applicationContext as App).startup.await()
-                MioReleaseNotifier.checkAndNotify(context)
+                MioMaintenance.runAll(context)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {

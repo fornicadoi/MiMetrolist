@@ -75,4 +75,10 @@
     <string name="mio_alarm_source_top">Tu top 100</string>
     <string name="mio_release_alerts">Avisos de lanzamientos</string>
     <string name="mio_release_alerts_description">Notificación cuando un artista que sigues publica música nueva</string>
+    <string name="mio_auto_group">Descargas y copias automáticas</string>
+    <string name="mio_auto_download">Descarga automática por Wi-Fi</string>
+    <string name="mio_auto_download_description">Descarga tus me gusta más recientes cuando estás en Wi-Fi. Las listas que marques para descargar se mantienen al día solas</string>
+    <string name="mio_auto_download_max">Máximo de canciones</string>
+    <string name="mio_auto_backup">Copia de seguridad semanal</string>
+    <string name="mio_auto_backup_description">Guarda tu biblioteca y ajustes una vez por semana en la carpeta que elijas</string>
 </resources>

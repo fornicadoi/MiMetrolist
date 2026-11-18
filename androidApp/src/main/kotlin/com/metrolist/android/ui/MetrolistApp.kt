@@ -5,6 +5,8 @@ package com.metrolist.android.ui
 import android.app.SearchManager
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.content.res.Configuration
 import android.nfc.NfcAdapter
 import android.os.Build
@@ -189,6 +191,9 @@ import com.metrolist.android.ui.components.AccountMenu
 import com.metrolist.android.ui.components.DesktopCaptionBar
 import com.metrolist.android.ui.components.DesktopMiniPlayerHeight
 import com.metrolist.android.mio.MioAlarmScheduler
+import com.metrolist.android.mio.MioMaintenance
+import com.metrolist.android.mio.MioCarMode
+import com.metrolist.android.mio.MioCarModeState
 import com.metrolist.android.mio.MioReleaseNotifier
 import com.metrolist.android.ui.components.MioMiniPlayerHeight
 import com.metrolist.android.ui.components.mioCardMiniPlayerEnabled
@@ -447,9 +452,30 @@ fun MetrolistApp(
         MioAlarmScheduler.update(context)
     }
     // MiMetrolist: avisos de lanzamientos de artistas seguidos.
-    LaunchedEffect(Settings.shared.mioReleaseAlerts) {
+    LaunchedEffect(Settings.shared.mioReleaseAlerts, Settings.shared.mioAutoDownload, Settings.shared.mioAutoBackup) {
         MioReleaseNotifier.scheduleDaily(context)
-        withContext(Dispatchers.IO) { runCatching { MioReleaseNotifier.checkAndNotify(context) } }
+        withContext(Dispatchers.IO) { MioMaintenance.runAll(context) }
+    }
+    // MiMetrolist: al activar la copia automática se pide la carpeta donde guardarla.
+    val mioBackupFolderPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri == null) {
+                Settings.shared.mioAutoBackup = false
+            } else {
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                    )
+                }
+                Settings.shared.mioAutoBackupFolder = uri.toString()
+                Settings.shared.mioAutoBackupLastAt = 0L
+            }
+        }
+    LaunchedEffect(Settings.shared.mioAutoBackup) {
+        if (Settings.shared.mioAutoBackup && Settings.shared.mioAutoBackupFolder.isBlank()) {
+            mioBackupFolderPicker.launch(null)
+        }
     }
 
     GlobalYouTube.applyContentRegion(
@@ -946,6 +972,7 @@ fun MetrolistApp(
             LocalMouseScrollFactors provides rememberMouseScrollFactors(),
             LocalPlaylistAdder provides addToPlaylist,
         ) {
+            if (MioCarModeState.visible) MioCarMode(onDismiss = { MioCarModeState.visible = false })
             val appAccountButton: @Composable (Modifier) -> Unit = { buttonModifier ->
                 val accountName = authManager.accountName
                 val accountThumbnail = authManager.accountThumbnail
@@ -1507,6 +1534,18 @@ fun MetrolistApp(
                                                         emptyList()
                                                     }
                                                 val topBarActions: @Composable RowScope.() -> Unit = {
+                                                    if (mioTopBar && navigationState.topLevelRoute == Screen.Home) {
+                                                        TopBarIconButton(
+                                                            floating = useFloatingTopBar,
+                                                            onClick = { MioCarModeState.visible = true },
+                                                        ) {
+                                                            Icon(
+                                                                MetrolistIcons.Outlined.DirectionsCar,
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(24.dp),
+                                                            )
+                                                        }
+                                                    }
                                                     if (navigationState.topLevelRoute == Screen.Home && Screen.History !in railScreens) {
                                                         TopBarIconButton(
                                                             floating = useFloatingTopBar,
