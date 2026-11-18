@@ -21,6 +21,10 @@ import com.metrolist.shared.settings.FontOption
 import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.ui.theme.MetrolistTypography
 import com.metrolist.shared.ui.theme.currentAppLocaleList
+import com.metrolist.shared.ui.theme.mioBold
+import com.metrolist.shared.ui.theme.mioColorScheme
+import com.metrolist.shared.ui.theme.mioShapes
+import com.metrolist.shared.ui.theme.resolve
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.metrolist.shared.ui.theme.MetrolistTheme as SharedMetrolistTheme
@@ -88,10 +92,18 @@ fun MetrolistTheme(
         darkTheme = isDark,
         pureBlack = pureBlack,
     ) {
+        // MiMetrolist: el mismo estilo personal que en Android.
+        val mio = Settings.shared.mioStyle
+        val baseTypography = AppTypography()
         MaterialExpressiveTheme(
-            colorScheme = MaterialTheme.colorScheme,
-            shapes = MaterialTheme.shapes,
-            typography = AppTypography(),
+            colorScheme =
+                if (mio) {
+                    mioColorScheme(Settings.shared.mioAccent.resolve(seedColor), Settings.shared.mioOled)
+                } else {
+                    MaterialTheme.colorScheme
+                },
+            shapes = if (mio) mioShapes() else MaterialTheme.shapes,
+            typography = if (mio && Settings.shared.mioBoldTitles) baseTypography.mioBold() else baseTypography,
             motionScheme = MotionScheme.expressive(),
             content = content,
         )

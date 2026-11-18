@@ -103,12 +103,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          upstream=$(cut -c1-7 .github/mi/upstream-sha 2>/dev/null || echo "?")
-          # La app busca actualizaciones en la versión con etiqueta "nightly" de este repositorio.
-          for tag in nightly ultima; do
-            gh release delete "$tag" --cleanup-tag --yes -R "$GITHUB_REPOSITORY" || true
-          done
-          gh release create nightly dist/MiMetrolist.apk -R "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" --prerelease \
-            --title "MiMetrolist $APP_VERSION ($(date -u +%Y-%m-%d))" \
-            --notes "Basada en la nightly de Metrolist ${upstream}. Descarga MiMetrolist.apk e instálala encima de la anterior, o actualiza desde Ajustes > Actualizaciones."
+          bash .github/mi/publish-nightly.sh dist/MiMetrolist.apk

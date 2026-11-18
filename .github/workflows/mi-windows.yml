@@ -1,0 +1,80 @@
+name: Mi Windows
+
+# Compila MiMetrolist para Windows x64 (ZIP portable) y lo publica en la
+# versión "nightly" como MiMetrolist-windows.zip.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'fastlane/**'
+
+concurrency:
+  group: mi-windows
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    if: github.event.repository.fork
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Preparar Gradle y JDK 25
+        uses: ./.github/actions/prepare-ci-gradle
+        with:
+          cache-scope: mi-desktop-windows
+          java-distribution: temurin
+          persist-configuration-cache: 'false'
+
+      - name: Generar iconos
+        uses: ./.github/actions/generate-icons
+
+      - name: Instalar .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: metro-wv2-helper/global.json
+
+      - name: Compilar ayudante de inicio de sesión
+        shell: pwsh
+        working-directory: metro-wv2-helper
+        run: |
+          $output = "../desktopApp/src/desktopMain/resources/windows"
+          dotnet publish "metro-wv2-helper.csproj" --configuration Release --runtime win-x64 --self-contained true --output $output -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -p:PublishReadyToRun=true
+          if ($LASTEXITCODE -ne 0) { throw "El ayudante de inicio de sesión no compiló ($LASTEXITCODE)" }
+          if (-not (Test-Path (Join-Path $output "metro-wv2-helper.exe") -PathType Leaf)) { throw "Falta metro-wv2-helper.exe" }
+
+      - name: Compilar MiMetrolist para Windows
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          base_version=$(sed -n 's/^appVersion=//p' gradle.properties | tr -d '\r')
+          app_version="${base_version}+${GITHUB_SHA::7}"
+          echo "APP_VERSION=${app_version}" >> "$GITHUB_ENV"
+          ./gradlew :desktopApp:assembleWindowsRelease \
+            -Pmetrolist.debug=false \
+            -Pmetrolist.verifyPackaging=false \
+            -Pmetrolist.desktop.arch=x86_64 \
+            "-PappVersion=${app_version}" \
+            --no-daemon \
+            --no-configuration-cache
+          mv dist/Metrolist-Desktop-Windows.zip dist/MiMetrolist-windows.zip
+          ls -la dist
+
+      - name: Publicar en Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/mi/publish-nightly.sh dist/MiMetrolist-windows.zip
