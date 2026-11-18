@@ -248,3 +248,35 @@ internal fun SettingsPageRegistryBuilder.mioAutoGroup() {
         }
     }
 }
+
+@Composable
+internal fun SettingsPageRegistryBuilder.mioPanelsGroup() {
+    if (!isDesktop) return
+    val settings = Settings.shared
+    group(id = "mioPanels", title = stringResource(Res.string.mio_panels_group)) {
+        switch(
+            id = "mioQueueFloating",
+            title = stringResource(Res.string.mio_panels_queue_floating),
+            description = stringResource(Res.string.mio_panels_floating_description),
+            checked = settings.mioQueueFloating,
+        ) { settings.mioQueueFloating = it }
+        switch(
+            id = "mioLyricsFloating",
+            title = stringResource(Res.string.mio_panels_lyrics_floating),
+            description = stringResource(Res.string.mio_panels_floating_description),
+            checked = settings.mioLyricsFloating,
+        ) { settings.mioLyricsFloating = it }
+        switch(
+            id = "mioFloatOnTop",
+            title = stringResource(Res.string.mio_panels_on_top),
+            description = stringResource(Res.string.mio_panels_on_top_description),
+            checked = settings.mioFloatOnTop,
+        ) { settings.mioFloatOnTop = it }
+        switch(
+            id = "mioPanesLeft",
+            title = stringResource(Res.string.mio_panels_left),
+            description = stringResource(Res.string.mio_panels_left_description),
+            checked = settings.mioPanesLeft,
+        ) { settings.mioPanesLeft = it }
+    }
+}

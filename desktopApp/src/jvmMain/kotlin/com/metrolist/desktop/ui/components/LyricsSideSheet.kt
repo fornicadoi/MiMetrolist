@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -106,6 +107,7 @@ internal fun DesktopLyricsContent(
     colorScheme: ColorScheme = MaterialTheme.colorScheme,
     modifier: Modifier = Modifier,
     isVisible: Boolean = true,
+    headerActions: @Composable RowScope.(tint: Color) -> Unit = {},
 ) {
     val activeSeedColor = UiState.seedColor
 
@@ -180,6 +182,7 @@ internal fun DesktopLyricsContent(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
+                            headerActions(headerIconTint)
                             Box {
                                 IconButton(
                                     onClick = { showLyricsMenu = !showLyricsMenu },

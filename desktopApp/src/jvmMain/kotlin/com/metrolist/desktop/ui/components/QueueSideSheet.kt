@@ -3,6 +3,7 @@
 package com.metrolist.desktop.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,6 +58,7 @@ internal fun DesktopQueueContent(
     onDismiss: () -> Unit,
     colorScheme: ColorScheme = MaterialTheme.colorScheme,
     modifier: Modifier = Modifier,
+    headerActions: @Composable RowScope.() -> Unit = {},
 ) {
     val queueState by PlayerState.queue.state.collectAsState()
     val downloadStates by DownloadManager.downloadStates.collectAsState()
@@ -175,6 +177,7 @@ internal fun DesktopQueueContent(
                     ),
                 isListenTogetherGuest = isListenTogetherGuest,
                 isDesktopPanel = true,
+                headerActions = headerActions,
                 onDismiss = onDismiss,
                 backHandlerEnabled = false,
                 reorderEnabled = !isQueueLocked,

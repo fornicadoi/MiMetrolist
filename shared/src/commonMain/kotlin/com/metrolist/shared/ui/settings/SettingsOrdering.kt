@@ -10,6 +10,7 @@ internal fun List<SettingsGroupRegistration>.prioritized(page: SettingsPageId): 
                     "mioStyle",
                     "mioAlarm",
                     "mioAuto",
+                    "mioPanels",
                     "theme",
                     "playerAppearance",
                     "tabs",

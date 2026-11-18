@@ -114,6 +114,7 @@ import com.metrolist.desktop.ui.components.FloatingSearchOverlay
 import com.metrolist.desktop.ui.components.FullscreenPlayerView
 import com.metrolist.desktop.ui.components.LocalCaptionBarInsets
 import com.metrolist.desktop.ui.components.MiniplayerWindow
+import com.metrolist.desktop.ui.components.MioFloatingPanelWindows
 import com.metrolist.desktop.ui.components.ShortcutsOverlay
 import com.metrolist.desktop.ui.components.TokenLoginDialog
 import com.metrolist.desktop.ui.components.UpdateArtworkTheme
@@ -593,7 +594,10 @@ private fun WindowScope.AppContent(
             }
         }
 
-        if (integrationsReady) MiniplayerWindow()
+        if (integrationsReady) {
+            MiniplayerWindow()
+            MioFloatingPanelWindows()
+        }
 
         if (UiState.showFloatingSearch) {
             FloatingSearchOverlay(

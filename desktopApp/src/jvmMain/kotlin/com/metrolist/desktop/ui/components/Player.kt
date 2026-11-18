@@ -176,6 +176,7 @@ fun PersistentPlayerDrawer(
         }
     val drawerOpen =
         UiState.showPersistentPlayerDrawer &&
+            !Settings.shared.mioQueueFloating &&
             PlayerState.currentTrack != null &&
             availableWidth >= 280.dp
     val targetDrawerWidth = if (drawerOpen) minOf(preferredWidth, availableWidth) else 0.dp
@@ -215,6 +216,7 @@ fun LyricsDrawer(
         }
     val drawerOpen =
         UiState.showLyricsDrawer &&
+            !Settings.shared.mioLyricsFloating &&
             PlayerState.currentTrack != null &&
             availableWidth >= 280.dp
     val targetDrawerWidth = if (drawerOpen) minOf(preferredWidth, availableWidth) else 0.dp

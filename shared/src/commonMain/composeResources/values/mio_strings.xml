@@ -81,4 +81,18 @@
     <string name="mio_auto_download_max">Máximo de canciones</string>
     <string name="mio_auto_backup">Copia de seguridad semanal</string>
     <string name="mio_auto_backup_description">Guarda tu biblioteca y ajustes una vez por semana en la carpeta que elijas</string>
+    <string name="mio_panels_group">Paneles de cola y letras</string>
+    <string name="mio_panels_queue_floating">Cola en ventana flotante</string>
+    <string name="mio_panels_lyrics_floating">Letras en ventana flotante</string>
+    <string name="mio_panels_floating_description">Se abre en su propia ventana, que puedes mover, cambiar de tamaño o convertir en burbuja</string>
+    <string name="mio_panels_on_top">Ventanas flotantes siempre encima</string>
+    <string name="mio_panels_on_top_description">Se quedan por encima de las demás aplicaciones</string>
+    <string name="mio_panels_left">Paneles a la izquierda</string>
+    <string name="mio_panels_left_description">La cola y las letras se acoplan al lado izquierdo en vez del derecho</string>
+    <string name="mio_float_detach">Abrir en ventana flotante</string>
+    <string name="mio_float_dock">Volver a acoplar</string>
+    <string name="mio_float_bubble">Convertir en burbuja</string>
+    <string name="mio_float_expand">Abrir panel</string>
+    <string name="mio_float_pin">Siempre encima</string>
+    <string name="mio_float_resize">Cambiar tamaño</string>
 </resources>

@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -86,6 +87,8 @@ import com.metrolist.desktop.ui.components.DesktopQueueContent
 import com.metrolist.desktop.ui.components.DeviceConnectModalSideSheet
 import com.metrolist.desktop.ui.components.DeviceConnectSideSheet
 import com.metrolist.desktop.ui.components.LyricsDrawer
+import com.metrolist.desktop.ui.components.MioDetachButton
+import com.metrolist.desktop.ui.components.MioPanelKind
 import com.metrolist.desktop.ui.components.PersistentPlayerDrawer
 import com.metrolist.desktop.ui.components.StandardBottomPlayer
 import com.metrolist.desktop.ui.components.TopBarWithPlayer
@@ -118,6 +121,7 @@ import com.metrolist.shared.ui.navigation.currentAdaptiveLayout
 import com.metrolist.shared.ui.navigation.isNavigationBar
 import com.metrolist.shared.ui.navigation.navigationId
 import com.metrolist.shared.ui.navigation.screenForNavigationId
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import java.awt.Cursor
 
@@ -504,52 +508,140 @@ private fun ColumnScope.MainLayoutContent(
     onLibraryScrollStateChange: (LazyGridState) -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxSize()) {
-        val availableSupportingWidth = (maxWidth - LayoutConstants.MinimumPrimaryPaneWidth).coerceAtLeast(0.dp)
-        val mioLibraryPanel = Settings.shared.mioStyle && maxWidth >= 1100.dp
-        val playerDrawersOverlayContent = availableSupportingWidth < 280.dp
+        val mio = Settings.shared.mioStyle
+        val minPaneWidth = if (mio) 220.dp else 280.dp
+        val panesLeft = mio && Settings.shared.mioPanesLeft
+        val isQueueOpen = UiState.showPersistentPlayerDrawer && PlayerState.currentTrack != null && !Settings.shared.mioQueueFloating
+        val isLyricsOpen = UiState.showLyricsDrawer && PlayerState.currentTrack != null && !Settings.shared.mioLyricsFloating
+        val density = LocalDensity.current
+
+        var queuePaneWidth by remember { mutableStateOf(Settings.shared.mioQueuePaneWidth.dp) }
+        var lyricsPaneWidth by remember { mutableStateOf(Settings.shared.mioLyricsPaneWidth.dp) }
+        LaunchedEffect(queuePaneWidth) {
+            delay(500)
+            Settings.shared.mioQueuePaneWidth = queuePaneWidth.value
+        }
+        LaunchedEffect(lyricsPaneWidth) {
+            delay(500)
+            Settings.shared.mioLyricsPaneWidth = lyricsPaneWidth.value
+        }
+
+        // The library panel only shows when the open panes still leave room for the content.
+        val openPanesWidth =
+            (if (isQueueOpen) queuePaneWidth + 12.dp else 0.dp) + (if (isLyricsOpen) lyricsPaneWidth + 12.dp else 0.dp)
+        val mioLibraryPanel =
+            mio && maxWidth >= 1100.dp && maxWidth - MioLibraryPanelWidth - openPanesWidth >= LayoutConstants.MinimumPrimaryPaneWidth
+        val libraryPanelSpace = if (mioLibraryPanel) MioLibraryPanelWidth else 0.dp
+        val availableSupportingWidth = (maxWidth - libraryPanelSpace - LayoutConstants.MinimumPrimaryPaneWidth).coerceAtLeast(0.dp)
+        val playerDrawersOverlayContent = availableSupportingWidth < minPaneWidth
         val overlayWidth = maxWidth
         val deviceConnectWidth = deviceConnectSideSheetWidth(maxWidth)
         val deviceConnectOverlaysContent = maxWidth - deviceConnectWidth < LayoutConstants.MinimumPrimaryPaneWidth
 
         SideEffect {
             if (!PlayerState.isExpanded) {
-                UiState.playerPanels.canShowBoth = availableSupportingWidth >= 560.dp
+                UiState.playerPanels.canShowBoth = availableSupportingWidth >= minPaneWidth * 2
             }
             UiState.isDeviceConnectPanelModal = deviceConnectOverlaysContent
         }
 
-        val isQueueOpen = UiState.showPersistentPlayerDrawer && PlayerState.currentTrack != null
-        val isLyricsOpen = UiState.showLyricsDrawer && PlayerState.currentTrack != null
-        val density = LocalDensity.current
-
-        var queuePaneWidth by remember { mutableStateOf(360.dp) }
-        var lyricsPaneWidth by remember { mutableStateOf(360.dp) }
-
         val maxQueueWidth =
             if (isQueueOpen && isLyricsOpen) {
-                (availableSupportingWidth - lyricsPaneWidth).coerceAtLeast(280.dp)
+                (availableSupportingWidth - lyricsPaneWidth).coerceAtLeast(minPaneWidth)
             } else {
-                availableSupportingWidth.coerceAtLeast(280.dp)
+                availableSupportingWidth.coerceAtLeast(minPaneWidth)
             }
         val maxLyricsWidth =
             if (isQueueOpen && isLyricsOpen) {
-                (availableSupportingWidth - queuePaneWidth).coerceAtLeast(280.dp)
+                (availableSupportingWidth - queuePaneWidth).coerceAtLeast(minPaneWidth)
             } else {
-                availableSupportingWidth.coerceAtLeast(280.dp)
+                availableSupportingWidth.coerceAtLeast(minPaneWidth)
             }
+
+        val paneEdge = if (panesLeft) Alignment.Start else Alignment.End
+        val enterPane =
+            expandHorizontally(
+                expandFrom = paneEdge,
+                animationSpec =
+                    spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow,
+                    ),
+            ) + fadeIn(animationSpec = tween(200))
+        val exitPane =
+            shrinkHorizontally(
+                shrinkTowards = paneEdge,
+                animationSpec =
+                    spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium,
+                    ),
+            ) + fadeOut(animationSpec = tween(150))
+        // A left-docked pane grows when its handle is dragged right; a right-docked one when dragged left.
+        val dragSign = if (panesLeft) 1f else -1f
+
+        val dockedPanes: @Composable RowScope.() -> Unit = {
+            AnimatedVisibility(visible = isQueueOpen, enter = enterPane, exit = exitPane) {
+                Row(modifier = Modifier.fillMaxHeight()) {
+                    val handle =
+                        @Composable {
+                            PaneResizeHandle(
+                                onDrag = { deltaPx ->
+                                    val deltaDp = with(density) { (deltaPx * dragSign).toDp() }
+                                    queuePaneWidth = (queuePaneWidth + deltaDp).coerceIn(minPaneWidth, maxQueueWidth)
+                                },
+                                onReset = { queuePaneWidth = 360.dp },
+                            )
+                        }
+                    if (!panesLeft) handle()
+                    DesktopQueueContent(
+                        onDismiss = { UiState.showPersistentPlayerDrawer = false },
+                        colorScheme = colorScheme,
+                        modifier = Modifier.width(queuePaneWidth.coerceIn(minPaneWidth, maxQueueWidth)).fillMaxHeight(),
+                        headerActions = { MioDetachButton(MioPanelKind.QUEUE, colorScheme.onSurfaceVariant) },
+                    )
+                    if (panesLeft) handle()
+                }
+            }
+
+            AnimatedVisibility(visible = isLyricsOpen, enter = enterPane, exit = exitPane) {
+                Row(modifier = Modifier.fillMaxHeight()) {
+                    val handle =
+                        @Composable {
+                            PaneResizeHandle(
+                                onDrag = { deltaPx ->
+                                    val deltaDp = with(density) { (deltaPx * dragSign).toDp() }
+                                    lyricsPaneWidth = (lyricsPaneWidth + deltaDp).coerceIn(minPaneWidth, maxLyricsWidth)
+                                },
+                                onReset = { lyricsPaneWidth = 360.dp },
+                            )
+                        }
+                    if (!panesLeft) handle()
+                    DesktopLyricsContent(
+                        onClose = { UiState.showLyricsDrawer = false },
+                        colorScheme = colorScheme,
+                        modifier = Modifier.width(lyricsPaneWidth.coerceIn(minPaneWidth, maxLyricsWidth)).fillMaxHeight(),
+                        isVisible = !PlayerState.isExpanded && !UiState.videoFullscreenObscuresPlayer,
+                        headerActions = { tint -> MioDetachButton(MioPanelKind.LYRICS, tint) },
+                    )
+                    if (panesLeft) handle()
+                }
+            }
+        }
 
         Box(Modifier.fillMaxSize()) {
             Row(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(if (Settings.shared.mioStyle) MioFrameColor else colorScheme.surfaceContainer)
+                        .background(if (mio) MioFrameColor else colorScheme.surfaceContainer)
                         .padding(8.dp),
             ) {
                 if (mioLibraryPanel) {
-                    MioLibraryPanel(Modifier.width(300.dp).fillMaxHeight())
+                    MioLibraryPanel(Modifier.width(MioLibraryPanelWidth - 8.dp).fillMaxHeight())
                     Spacer(Modifier.width(8.dp))
                 }
+                if (panesLeft && !playerDrawersOverlayContent) dockedPanes()
                 StandardContentSurface(
                     route = route,
                     layoutState = layoutState,
@@ -559,90 +651,7 @@ private fun ColumnScope.MainLayoutContent(
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                 )
 
-                if (!playerDrawersOverlayContent) {
-                    AnimatedVisibility(
-                        visible = isQueueOpen,
-                        enter =
-                            expandHorizontally(
-                                expandFrom = Alignment.End,
-                                animationSpec =
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessMediumLow,
-                                    ),
-                            ) + fadeIn(animationSpec = tween(200)),
-                        exit =
-                            shrinkHorizontally(
-                                shrinkTowards = Alignment.End,
-                                animationSpec =
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessMedium,
-                                    ),
-                            ) + fadeOut(animationSpec = tween(150)),
-                    ) {
-                        Row(modifier = Modifier.fillMaxHeight()) {
-                            PaneResizeHandle(
-                                onDrag = { deltaPx ->
-                                    val deltaDp = with(density) { -deltaPx.toDp() }
-                                    queuePaneWidth = (queuePaneWidth + deltaDp).coerceIn(280.dp, maxQueueWidth)
-                                },
-                                onReset = { queuePaneWidth = 360.dp },
-                            )
-                            DesktopQueueContent(
-                                onDismiss = { UiState.showPersistentPlayerDrawer = false },
-                                colorScheme = colorScheme,
-                                modifier =
-                                    Modifier
-                                        .width(
-                                            queuePaneWidth.coerceIn(280.dp, maxQueueWidth),
-                                        ).fillMaxHeight(),
-                            )
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = isLyricsOpen,
-                        enter =
-                            expandHorizontally(
-                                expandFrom = Alignment.End,
-                                animationSpec =
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessMediumLow,
-                                    ),
-                            ) + fadeIn(animationSpec = tween(200)),
-                        exit =
-                            shrinkHorizontally(
-                                shrinkTowards = Alignment.End,
-                                animationSpec =
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessMedium,
-                                    ),
-                            ) + fadeOut(animationSpec = tween(150)),
-                    ) {
-                        Row(modifier = Modifier.fillMaxHeight()) {
-                            PaneResizeHandle(
-                                onDrag = { deltaPx ->
-                                    val deltaDp = with(density) { -deltaPx.toDp() }
-                                    lyricsPaneWidth = (lyricsPaneWidth + deltaDp).coerceIn(280.dp, maxLyricsWidth)
-                                },
-                                onReset = { lyricsPaneWidth = 360.dp },
-                            )
-                            DesktopLyricsContent(
-                                onClose = { UiState.showLyricsDrawer = false },
-                                colorScheme = colorScheme,
-                                modifier =
-                                    Modifier
-                                        .width(
-                                            lyricsPaneWidth.coerceIn(280.dp, maxLyricsWidth),
-                                        ).fillMaxHeight(),
-                                isVisible = !PlayerState.isExpanded && !UiState.videoFullscreenObscuresPlayer,
-                            )
-                        }
-                    }
-                }
+                if (!panesLeft && !playerDrawersOverlayContent) dockedPanes()
 
                 if (!deviceConnectOverlaysContent) {
                     DeviceConnectSideSheet(panelWidth = deviceConnectWidth)
@@ -650,7 +659,7 @@ private fun ColumnScope.MainLayoutContent(
             }
 
             if (playerDrawersOverlayContent) {
-                Row(Modifier.align(Alignment.CenterEnd).fillMaxHeight()) {
+                Row(Modifier.align(if (panesLeft) Alignment.CenterStart else Alignment.CenterEnd).fillMaxHeight()) {
                     PersistentPlayerDrawer(colorScheme = colorScheme, availableWidth = overlayWidth)
                     LyricsDrawer(colorScheme = colorScheme, availableWidth = overlayWidth)
                 }
@@ -700,3 +709,4 @@ private fun StandardContentSurface(
 // MiMetrolist: marco negro y paneles casi negros.
 internal val MioFrameColor = Color.Black
 internal val MioPanelColor = Color(0xFF121212)
+private val MioLibraryPanelWidth = 308.dp

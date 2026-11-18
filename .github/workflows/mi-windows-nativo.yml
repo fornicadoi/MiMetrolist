@@ -5,6 +5,12 @@ name: Mi Windows nativo (experimental)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'fastlane/**'
 
 concurrency:
   group: mi-windows-nativo

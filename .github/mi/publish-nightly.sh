@@ -9,7 +9,8 @@ title="MiMetrolist ${APP_VERSION} ($(date -u +%Y-%m-%d))"
 notes="Basada en la nightly de Metrolist ${upstream}.
 
 - Android: descarga MiMetrolist.apk e instálala encima de la anterior, o actualiza desde Ajustes > Actualizaciones.
-- Windows: descarga MiMetrolist-windows.zip, descomprímelo y abre Metrolist.exe."
+- Windows: descarga MiMetrolist-windows.zip, descomprímelo y abre Metrolist.exe.
+- Windows nativo (experimental, abre más rápido): MiMetrolist-windows-nativo.zip. Llega un rato después que las demás."
 if gh release view nightly -R "$repo" >/dev/null 2>&1; then
   gh release edit nightly -R "$repo" --target "$GITHUB_SHA" --title "$title" --notes "$notes" --prerelease
 else

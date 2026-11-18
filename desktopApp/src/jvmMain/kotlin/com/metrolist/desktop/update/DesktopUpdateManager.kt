@@ -305,6 +305,8 @@ data class GitHubDesktopRelease(
             assets.firstOrNull { asset ->
                 asset.state == "uploaded" &&
                     when {
+                        // MiMetrolist: the native build updates from its own package.
+                        OsUtil.isWindows && isNativeImage() -> asset.name.endsWith("-windows-nativo.zip")
                         OsUtil.isWindows -> asset.name.endsWith("-windows.zip")
                         OsUtil.isMac -> asset.name.contains("-macos", ignoreCase = true)
                         else -> asset.name.endsWith("-linux-${desktopArchitecture()}.AppImage")
@@ -387,6 +389,8 @@ internal fun desktopUpdateCheckIsDue(
     lastAttempt: Long,
     now: Long,
 ): Boolean = lastAttempt !in 1..now || now - lastAttempt >= 60 * 60 * 1_000L
+
+internal fun isNativeImage(): Boolean = System.getProperty("org.graalvm.nativeimage.imagecode") == "runtime"
 
 private fun desktopArchitecture(): String =
     when (System.getProperty("os.arch").lowercase()) {
