@@ -88,6 +88,7 @@ internal fun SettingsUiRegistryBuilder.registerAppearanceSettings(host: SharedSe
         subtitle = stringResource(Res.string.settings_appearance_overview),
     ) {
         mioSettingsGroup()
+        mioAlarmGroup()
         group("theme", stringResource(Res.string.appearance_theme)) {
             choice(
                 id = "themeMode",

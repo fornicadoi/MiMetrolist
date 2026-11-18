@@ -64,4 +64,15 @@
     <string name="mio_mix_recent">Lo que escuchas ahora</string>
     <string name="mio_daily_mixes">Mezclas diarias en el inicio</string>
     <string name="mio_daily_mixes_description">Listas que se arman solas cada día con lo que más escuchas</string>
+    <string name="mio_alarm_group">Despertador y avisos</string>
+    <string name="mio_alarm_enabled">Activar despertador</string>
+    <string name="mio_alarm_enabled_description">Suena todos los días a la hora elegida, subiendo el volumen poco a poco</string>
+    <string name="mio_alarm_hour">Hora</string>
+    <string name="mio_alarm_minute">Minutos</string>
+    <string name="mio_alarm_source">Qué suena</string>
+    <string name="mio_alarm_source_me_gusta">Tus me gusta</string>
+    <string name="mio_alarm_source_descargadas">Tus descargas (funciona sin internet)</string>
+    <string name="mio_alarm_source_top">Tu top 100</string>
+    <string name="mio_release_alerts">Avisos de lanzamientos</string>
+    <string name="mio_release_alerts_description">Notificación cuando un artista que sigues publica música nueva</string>
 </resources>

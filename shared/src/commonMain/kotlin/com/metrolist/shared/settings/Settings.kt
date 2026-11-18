@@ -326,6 +326,13 @@ class Settings(
     var mioNavBar by preference(MioNavBar.DEGRADADO)
     var mioDownloadLight by preference(true)
     var mioDailyMixes by preference(true)
+    var mioAlarmEnabled by preference(false)
+    var mioAlarmHour by preference(7)
+    var mioAlarmMinute by preference(0)
+    var mioAlarmSource by preference(MioAlarmSource.ME_GUSTA)
+    var mioReleaseAlerts by preference(true)
+    var mioReleasesSeen by preference("")
+    var mioReleasesCheckedAt by preference(0L)
 
     var appFont by preference(FontOption.SYSTEM)
     var androidCustomFontFile by preference(AndroidCustomFontFileKey, "")

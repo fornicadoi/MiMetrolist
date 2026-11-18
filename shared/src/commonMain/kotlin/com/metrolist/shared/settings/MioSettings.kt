@@ -42,3 +42,10 @@ enum class MioNavBar {
     SOLIDA,
     ORIGINAL,
 }
+
+/** Qué suena con el despertador. */
+enum class MioAlarmSource {
+    ME_GUSTA,
+    DESCARGADAS,
+    TOP,
+}

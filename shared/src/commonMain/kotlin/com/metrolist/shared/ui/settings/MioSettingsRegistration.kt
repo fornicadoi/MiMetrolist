@@ -9,10 +9,12 @@ package com.metrolist.shared.ui.settings
 import androidx.compose.runtime.Composable
 import com.metrolist.shared.generated.resources.*
 import com.metrolist.shared.settings.MioAccent
+import com.metrolist.shared.settings.MioAlarmSource
 import com.metrolist.shared.settings.MioCorners
 import com.metrolist.shared.settings.MioMiniPlayer
 import com.metrolist.shared.settings.MioNavBar
 import com.metrolist.shared.settings.Settings
+import com.metrolist.shared.utils.isDesktop
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -157,5 +159,60 @@ internal fun SettingsPageRegistryBuilder.mioSettingsGroup() {
             description = stringResource(Res.string.mio_download_light_description),
             checked = settings.mioDownloadLight,
         ) { settings.mioDownloadLight = it }
+    }
+}
+
+private val alarmSourceLabels: Map<MioAlarmSource, StringResource> =
+    mapOf(
+        MioAlarmSource.ME_GUSTA to Res.string.mio_alarm_source_me_gusta,
+        MioAlarmSource.DESCARGADAS to Res.string.mio_alarm_source_descargadas,
+        MioAlarmSource.TOP to Res.string.mio_alarm_source_top,
+    )
+
+@Composable
+internal fun SettingsPageRegistryBuilder.mioAlarmGroup() {
+    if (isDesktop) return
+    val settings = Settings.shared
+    group(id = "mioAlarm", title = stringResource(Res.string.mio_alarm_group)) {
+        switch(
+            id = "mioReleaseAlerts",
+            title = stringResource(Res.string.mio_release_alerts),
+            description = stringResource(Res.string.mio_release_alerts_description),
+            checked = settings.mioReleaseAlerts,
+        ) { settings.mioReleaseAlerts = it }
+        switch(
+            id = "mioAlarmEnabled",
+            title = stringResource(Res.string.mio_alarm_enabled),
+            description = stringResource(Res.string.mio_alarm_enabled_description),
+            checked = settings.mioAlarmEnabled,
+        ) { settings.mioAlarmEnabled = it }
+        val on = settings.mioAlarmEnabled
+        slider(
+            id = "mioAlarmHour",
+            title = stringResource(Res.string.mio_alarm_hour),
+            valueLabel = settings.mioAlarmHour.toString().padStart(2, '0'),
+            value = settings.mioAlarmHour.toFloat(),
+            range = 0f..23f,
+            steps = 22,
+            enabled = on,
+        ) { settings.mioAlarmHour = it.toInt().coerceIn(0, 23) }
+        slider(
+            id = "mioAlarmMinute",
+            title = stringResource(Res.string.mio_alarm_minute),
+            valueLabel = settings.mioAlarmMinute.toString().padStart(2, '0'),
+            value = settings.mioAlarmMinute.toFloat(),
+            range = 0f..55f,
+            steps = 10,
+            enabled = on,
+        ) { settings.mioAlarmMinute = (it / 5f).toInt().times(5).coerceIn(0, 55) }
+        val sources = choicesOf(alarmSourceLabels)
+        choice(
+            id = "mioAlarmSource",
+            title = stringResource(Res.string.mio_alarm_source),
+            valueLabel = sources.first { it.id == settings.mioAlarmSource.name }.label,
+            choices = sources,
+            selectedChoiceId = settings.mioAlarmSource.name,
+            enabled = on,
+        ) { settings.mioAlarmSource = MioAlarmSource.valueOf(it) }
     }
 }

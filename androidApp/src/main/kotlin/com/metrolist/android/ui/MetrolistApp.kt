@@ -188,6 +188,8 @@ import com.metrolist.android.ui.component.floatingBarCircle
 import com.metrolist.android.ui.components.AccountMenu
 import com.metrolist.android.ui.components.DesktopCaptionBar
 import com.metrolist.android.ui.components.DesktopMiniPlayerHeight
+import com.metrolist.android.mio.MioAlarmScheduler
+import com.metrolist.android.mio.MioReleaseNotifier
 import com.metrolist.android.ui.components.MioMiniPlayerHeight
 import com.metrolist.android.ui.components.mioCardMiniPlayerEnabled
 import com.metrolist.android.ui.components.MiniPlayer
@@ -439,6 +441,16 @@ fun MetrolistApp(
     }
 
     val systemJvmLocale = AppLocale.systemLocale(context)
+
+    // MiMetrolist: reprograma el despertador cuando cambian sus ajustes.
+    LaunchedEffect(Settings.shared.mioAlarmEnabled, Settings.shared.mioAlarmHour, Settings.shared.mioAlarmMinute) {
+        MioAlarmScheduler.update(context)
+    }
+    // MiMetrolist: avisos de lanzamientos de artistas seguidos.
+    LaunchedEffect(Settings.shared.mioReleaseAlerts) {
+        MioReleaseNotifier.scheduleDaily(context)
+        withContext(Dispatchers.IO) { runCatching { MioReleaseNotifier.checkAndNotify(context) } }
+    }
 
     GlobalYouTube.applyContentRegion(
         contentCountry = Settings.shared.contentCountry,
