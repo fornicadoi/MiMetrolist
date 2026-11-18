@@ -12,6 +12,7 @@
 package com.metrolist.shared.deviceconnect
 
 import androidx.compose.runtime.snapshotFlow
+import com.metrolist.shared.mio.MioLibraryTransfer
 import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.utils.Logger
 import com.metrolist.shared.youtube.playback.PlaybackEventKind
@@ -448,6 +449,18 @@ class DeviceConnectManager
                     encodedPlayback = message to it
                 }
             }
+
+        /** MiMetrolist: sends an encoded library message directly, bypassing the coalescing outbox. */
+        suspend fun mioSendLibrary(
+            deviceId: String,
+            bytes: ByteArray,
+        ): Boolean {
+            val session =
+                stateMutex.withLock {
+                    connections.values.firstOrNull { it.device.id == deviceId && it.supportsPlayback() }
+                } ?: return false
+            return session.sendPlayback(bytes)
+        }
 
         internal suspend fun sendPlayback(
             deviceId: String,
@@ -2212,6 +2225,11 @@ class DeviceConnectManager
                             null
                         }
                     }
+                if (message?.type == DcSyncMessageType.LIBRARY) {
+                    val library = message.library
+                    if (library != null && ensureSessionIdentityCurrent()) MioLibraryTransfer.onReceived(device.name, library)
+                    return
+                }
                 if (message != null && supportsPlayback() && ensureSessionIdentityCurrent()) {
                     remote.onMessage(device.id, message)
                 }

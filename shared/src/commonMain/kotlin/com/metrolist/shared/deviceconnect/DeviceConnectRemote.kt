@@ -343,6 +343,10 @@ class DeviceConnectRemote(
                 DcSyncMessageType.ERROR -> {
                     handleError(peerId, message)
                 }
+
+                DcSyncMessageType.LIBRARY -> {
+                    Unit
+                }
             }
         }
     }

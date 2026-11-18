@@ -23,6 +23,7 @@ import com.metrolist.shared.deviceconnect.DeviceConnectPlaybackStatus
 import com.metrolist.shared.deviceconnect.deviceConnectDeviceMetadata
 import com.metrolist.shared.deviceconnect.deviceConnectPeerStatus
 import com.metrolist.shared.generated.resources.*
+import com.metrolist.shared.mio.MioLibraryTransfer
 import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.ui.icons.MetrolistIcons
 import kotlinx.coroutines.flow.StateFlow
@@ -152,6 +153,15 @@ internal fun SettingsUiRegistryBuilder.deviceConnectPage(host: DeviceConnectSett
                     confirmationMessage = if (paired) stringResource(Res.string.device_connect_forget_message) else null,
                 ) {
                     if (paired) host.onForget(peer.id) else host.onPair(peer.id)
+                }
+                if (paired && peer.state == DeviceConnectManager.PeerState.CONNECTED) {
+                    val name = peer.name.ifBlank { peer.id }
+                    action(
+                        id = "mioSendLibrary:${peer.id}",
+                        title = stringResource(Res.string.mio_transfer_action, name),
+                        description = MioLibraryTransfer.notice ?: stringResource(Res.string.mio_transfer_description),
+                        enabled = !MioLibraryTransfer.busy,
+                    ) { MioLibraryTransfer.send(peer.id, name) }
                 }
                 if (pairingRequest != null) {
                     action(

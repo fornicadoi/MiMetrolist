@@ -91,6 +91,7 @@ import com.metrolist.desktop.crash.DesktopCrashRecovery
 import com.metrolist.desktop.deviceconnect.DesktopDeviceConnect
 import com.metrolist.desktop.di.composeStateModule
 import com.metrolist.desktop.input.DesktopShortcutLayer
+import com.metrolist.desktop.input.MioGlobalHotkeys
 import com.metrolist.desktop.input.desktopScrollConfig
 import com.metrolist.desktop.state.DesktopLocaleManager
 import com.metrolist.desktop.state.app.AppState
@@ -185,6 +186,8 @@ import com.metrolist.shared.generated.resources.technical_information
 import com.metrolist.shared.generated.resources.window_title_now_playing
 import com.metrolist.shared.generated.resources.youtube_session_expired_message
 import com.metrolist.shared.generated.resources.youtube_session_expired_title
+import com.metrolist.shared.mio.MioFocus
+import com.metrolist.shared.mio.MioPendingImport
 import com.metrolist.shared.scrobble.ScrobbleSessions
 import com.metrolist.shared.settings.AppLayout
 import com.metrolist.shared.settings.LibraryFilterType
@@ -219,6 +222,8 @@ import com.metrolist.shared.ui.navigation.Navigator
 import com.metrolist.shared.ui.navigation.Screen
 import com.metrolist.shared.ui.navigation.rememberNavigationState
 import com.metrolist.shared.ui.playback.LocalPlaybackController
+import com.metrolist.shared.ui.screens.MioFocusHost
+import com.metrolist.shared.ui.screens.MioLibraryTransferHost
 import com.metrolist.shared.ui.utils.LocalMouseScrollFactors
 import com.metrolist.shared.ui.utils.desktopMouseScrollFactors
 import com.metrolist.shared.ui.utils.softwareRendering
@@ -597,6 +602,20 @@ private fun WindowScope.AppContent(
         if (integrationsReady) {
             MiniplayerWindow()
             MioFloatingPanelWindows()
+        }
+        MioFocusHost(nowPlaying = PlayerState.currentTrack?.title)
+        MioLibraryTransferHost()
+        LaunchedEffect(integrationsReady, Settings.shared.mioGlobalHotkeys) {
+            MioGlobalHotkeys.update(integrationsReady && Settings.shared.mioGlobalHotkeys)
+        }
+        DisposableEffect(Unit) {
+            MioFocus.playSongs = { songs -> PlayerState.playTrack(songs.first(), songs) }
+            MioFocus.setPlaying = { playing -> if (playing) PlayerState.play() else PlayerState.pause() }
+            MioPendingImport.opener = {
+                UiState.openPlaylistImportRequested = true
+                UiState.showSettings = true
+            }
+            onDispose { MioPendingImport.opener = null }
         }
 
         if (UiState.showFloatingSearch) {

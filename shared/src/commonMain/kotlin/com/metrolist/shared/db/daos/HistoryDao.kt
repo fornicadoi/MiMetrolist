@@ -97,6 +97,12 @@ interface HistoryDao {
     @Query("SELECT * FROM event ORDER BY rowId DESC")
     fun events(): Flow<List<EventWithSong>>
 
+    @Query("SELECT COUNT(*) FROM event WHERE songId = :songId AND timestamp = :timestamp")
+    suspend fun mioEventCount(
+        songId: String,
+        timestamp: LocalDateTime,
+    ): Int
+
     @Transaction
     @Query("SELECT * FROM event WHERE id IN (:ids)")
     suspend fun historyEventsById(ids: List<Long>): List<EventWithSong>

@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import com.metrolist.shared.mio.MioPendingImport
 import com.metrolist.shared.ui.components.ListCard
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -91,6 +92,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
@@ -256,6 +258,7 @@ fun SearchContent(
 
     val motion = rememberNavigationMotion()
     val contentState = searchPresentation(query, isQuerySubmitted)
+    val importLink = remember(query) { MioPendingImport.linkIn(query) }?.takeIf { MioPendingImport.opener != null }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isWide = maxWidth >= 960.dp
@@ -267,6 +270,7 @@ fun SearchContent(
             label = "Search content transition",
         ) { state ->
             Box(modifier = Modifier.fillMaxSize().blockInput(!transition.acceptsInput(EnterExitState.Visible))) {
+                importLink?.let { MioImportLinkCard(it, Modifier.align(Alignment.TopCenter).zIndex(1f)) }
                 when (state) {
                     SearchPresentation.SUGGESTIONS -> {
                         SearchSuggestionsList(

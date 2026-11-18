@@ -166,6 +166,7 @@ import com.metrolist.shared.generated.resources.restore_replaces_data
 import com.metrolist.shared.generated.resources.restoring_backup
 import com.metrolist.shared.generated.resources.sensitive_backup
 import com.metrolist.shared.generated.resources.youtube_music
+import com.metrolist.shared.mio.MioPendingImport
 import com.metrolist.shared.playlistimport.ImportErrorKey
 import com.metrolist.shared.playlistimport.ImportException
 import com.metrolist.shared.playlistimport.ImportProgressState
@@ -592,6 +593,11 @@ fun BackupRestoreSettingsScreen(colorScheme: ColorScheme) {
             inputDialogValue = ""
             onInputSubmitted = onSubmit
         }
+    }
+
+    // MiMetrolist: un enlace compartido o pegado en el buscador abre la importación directamente.
+    LaunchedEffect(MioPendingImport.url) {
+        MioPendingImport.consume()?.let(::handleLinkOrTextSubmitted)
     }
 
     Column(Modifier.fillMaxSize()) {

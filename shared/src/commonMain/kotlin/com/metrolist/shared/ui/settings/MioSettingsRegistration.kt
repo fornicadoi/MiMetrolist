@@ -278,5 +278,11 @@ internal fun SettingsPageRegistryBuilder.mioPanelsGroup() {
             description = stringResource(Res.string.mio_panels_left_description),
             checked = settings.mioPanesLeft,
         ) { settings.mioPanesLeft = it }
+        switch(
+            id = "mioGlobalHotkeys",
+            title = stringResource(Res.string.mio_hotkeys),
+            description = stringResource(Res.string.mio_hotkeys_description),
+            checked = settings.mioGlobalHotkeys,
+        ) { settings.mioGlobalHotkeys = it }
     }
 }

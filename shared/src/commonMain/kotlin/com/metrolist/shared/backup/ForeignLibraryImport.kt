@@ -542,6 +542,7 @@ private fun SQLiteConnection.bookmarks(
 suspend fun MusicDatabase.importForeignLibrary(
     library: ForeignLibrary,
     onNewLikes: (List<SongItem>) -> Unit = SongLikeState::appendLikes,
+    skipExistingPlays: Boolean = false,
 ): ForeignImportSummary {
     val now = Clock.System.now().toEpochMilliseconds()
     val sourceSongs = library.songs.filter { !it.isLocal && !it.isLive && isYouTubeVideoId(it.id) }.associateBy(ForeignSong::id)
@@ -576,6 +577,8 @@ suspend fun MusicDatabase.importForeignLibrary(
             if (play.songId !in imported || play.playedAt <= 0) return@forEach
             val key = stableHistoryKey(play)
             if (dao.historyProvenance(FOREIGN_HISTORY_SOURCE, key) != null) return@forEach
+            // MiMetrolist: a library sent back from another device carries plays this one already has.
+            if (skipExistingPlays && dao.mioEventCount(play.songId, play.playedAt.timestamp()) > 0) return@forEach
             val eventId =
                 dao.insert(
                     Event(songId = play.songId, timestamp = play.playedAt.timestamp(), playTime = play.playTimeMs.coerceAtLeast(0)),

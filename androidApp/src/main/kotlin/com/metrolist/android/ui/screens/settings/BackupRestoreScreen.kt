@@ -184,6 +184,7 @@ import com.metrolist.shared.generated.resources.restore_stage_verifying_database
 import com.metrolist.shared.generated.resources.spotify_import_skipped_playlists
 import com.metrolist.shared.generated.resources.unknown
 import com.metrolist.shared.generated.resources.youtube_music
+import com.metrolist.shared.mio.MioPendingImport
 import com.metrolist.shared.playlistimport.AppleMusicPlaylistImporter
 import com.metrolist.shared.playlistimport.CsvColumnMapping
 import com.metrolist.shared.playlistimport.ImportErrorKey
@@ -676,6 +677,11 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
                 }
             },
         )
+    }
+
+    // MiMetrolist: un enlace compartido o pegado en el buscador abre la importación directamente.
+    LaunchedEffect(MioPendingImport.url) {
+        MioPendingImport.consume()?.let(::handleLinkOrTextSubmitted)
     }
 
     LaunchedEffect(Unit) {

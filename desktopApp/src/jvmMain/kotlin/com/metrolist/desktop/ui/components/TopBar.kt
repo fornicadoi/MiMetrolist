@@ -165,6 +165,7 @@ import com.metrolist.shared.generated.resources.menu_repeat_off
 import com.metrolist.shared.generated.resources.menu_repeat_one
 import com.metrolist.shared.generated.resources.menu_shuffle_off
 import com.metrolist.shared.generated.resources.menu_shuffle_on
+import com.metrolist.shared.generated.resources.mio_focus_open
 import com.metrolist.shared.generated.resources.next
 import com.metrolist.shared.generated.resources.pause
 import com.metrolist.shared.generated.resources.play
@@ -181,6 +182,7 @@ import com.metrolist.shared.generated.resources.search_music
 import com.metrolist.shared.generated.resources.search_placeholder
 import com.metrolist.shared.generated.resources.shuffle
 import com.metrolist.shared.generated.resources.stop_downloading
+import com.metrolist.shared.mio.MioFocus
 import com.metrolist.shared.model.RepeatMode
 import com.metrolist.shared.model.previewThumbnailUrl
 import com.metrolist.shared.playlistimport.PlaylistImportProgressIndicator
@@ -225,6 +227,7 @@ fun WindowScope.CustomTitleBar(
 
     val navItems: @Composable () -> Unit = {
         TopBarRefreshButton(onRefresh)
+        MioFocusButton()
     }
     val titlebarContent: @Composable () -> Unit = {
         Row(
@@ -330,6 +333,7 @@ fun WindowScope.TopBarWithPlayer(
     var showAccountPanel by remember { mutableStateOf(false) }
     val navItems: @Composable () -> Unit = {
         TopBarRefreshButton(onRefresh)
+        MioFocusButton()
     }
     val backInteractionSource = remember { MutableInteractionSource() }
     val nextInteractionSource = remember { MutableInteractionSource() }
@@ -739,6 +743,19 @@ fun WindowScope.TopBarWithPlayer(
         titlebarContent2()
     } else {
         WindowDraggableArea(content = titlebarContent2)
+    }
+}
+
+@Composable
+private fun MioFocusButton() {
+    if (!Settings.shared.mioStyle) return
+    IconButton(onClick = { MioFocus.visible = true }, modifier = Modifier.size(40.dp), shapes = IconButtonDefaults.shapes()) {
+        Icon(
+            MetrolistIcons.Outlined.Headphones,
+            contentDescription = stringResource(Res.string.mio_focus_open),
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

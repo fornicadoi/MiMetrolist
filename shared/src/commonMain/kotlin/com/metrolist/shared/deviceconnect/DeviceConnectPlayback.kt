@@ -1,5 +1,6 @@
 package com.metrolist.shared.deviceconnect
 
+import com.metrolist.shared.mio.MioLibraryPayload
 import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.playback.MusicQueueSnapshot
 import kotlinx.serialization.Serializable
@@ -155,6 +156,9 @@ enum class DcSyncMessageType {
 
     RELEASE,
     ERROR,
+
+    // MiMetrolist: a whole library sent to a paired device.
+    LIBRARY,
 }
 
 @Serializable
@@ -181,4 +185,5 @@ data class DcSyncMessage(
     val pause: Boolean = false,
     val error: DcSyncError? = null,
     val queueStateId: String = "",
+    val library: MioLibraryPayload? = null,
 )

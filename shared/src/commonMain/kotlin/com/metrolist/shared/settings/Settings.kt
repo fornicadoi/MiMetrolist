@@ -349,6 +349,12 @@ class Settings(
     var mioQueuePaneWidth by preference(360f)
     var mioLyricsPaneWidth by preference(360f)
     var mioPanesLeft by preference(false)
+    var mioFocusWorkMinutes by preference(25)
+    var mioFocusBreakMinutes by preference(5)
+    var mioFocusRounds by preference(4)
+    var mioFocusCalmMusic by preference(true)
+    var mioFocusPauseOnBreak by preference(true)
+    var mioGlobalHotkeys by preference(true)
 
     var appFont by preference(FontOption.SYSTEM)
     var androidCustomFontFile by preference(AndroidCustomFontFileKey, "")

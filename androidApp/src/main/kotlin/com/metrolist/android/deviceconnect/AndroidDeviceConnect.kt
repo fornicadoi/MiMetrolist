@@ -19,11 +19,13 @@ import com.metrolist.shared.deviceconnect.DcPlaybackSnapshot
 import com.metrolist.shared.deviceconnect.DcRepeatMode
 import com.metrolist.shared.deviceconnect.DeviceConnectDeviceType
 import com.metrolist.shared.deviceconnect.DeviceConnectManager
+import com.metrolist.shared.mio.MioLibraryTransfer
 import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.playback.MusicQueueSnapshot
 
 object AndroidDeviceConnect {
-    val manager = DeviceConnectManager(localDeviceType = DeviceConnectDeviceType.ANDROID_PHONE)
+    val manager =
+        DeviceConnectManager(localDeviceType = DeviceConnectDeviceType.ANDROID_PHONE).also { MioLibraryTransfer.manager = it }
 
     fun intercept(
         command: DcPlaybackCommand,

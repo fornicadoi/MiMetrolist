@@ -266,6 +266,8 @@ import com.metrolist.shared.db.MusicDatabase
 import com.metrolist.shared.db.entities.KIND_DOWNLOAD
 import com.metrolist.shared.db.isHistoryPlaylistId
 import com.metrolist.shared.deviceconnect.DeviceConnectPairingHost
+import com.metrolist.shared.generated.resources.mio_focus_open
+import com.metrolist.shared.generated.resources.mio_focus_title
 import com.metrolist.shared.generated.resources.mio_library_title
 import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.action_login
@@ -303,6 +305,8 @@ import com.metrolist.shared.generated.resources.youtube_music
 import com.metrolist.shared.generated.resources.youtube_session_expired_message
 import com.metrolist.shared.generated.resources.youtube_session_expired_title
 import com.metrolist.shared.listentogether.parseListenTogetherInvitation
+import com.metrolist.shared.mio.MioFocus
+import com.metrolist.shared.mio.MioPendingImport
 import com.metrolist.shared.model.ArtistTiny
 import com.metrolist.shared.model.BuiltinPlaylist
 import com.metrolist.shared.model.SearchFilter
@@ -372,6 +376,8 @@ import com.metrolist.shared.ui.playback.LocalPlaybackController
 import com.metrolist.shared.ui.player.LocalPlayerPlatform
 import com.metrolist.shared.ui.player.PlayerScreen
 import com.metrolist.shared.ui.player.shouldShowMusicVideoSurface
+import com.metrolist.shared.ui.screens.MioFocusHost
+import com.metrolist.shared.ui.screens.MioLibraryTransferHost
 import com.metrolist.shared.ui.screens.pageKey
 import com.metrolist.shared.ui.screens.toHomeSection
 import com.metrolist.shared.ui.settings.SettingsPageId
@@ -536,6 +542,10 @@ fun MetrolistApp(
         val startupPresentation = LocalStartupPresentation.current
         SideEffect { startupPresentation?.homeRequired = currentRoute == Screen.Home }
         val navigator = remember(navigationState) { Navigator(navigationState) }
+        DisposableEffect(navigator) {
+            MioPendingImport.opener = { navigator.navigate(Screen.PlaylistImport) }
+            onDispose { MioPendingImport.opener = null }
+        }
         val homeScrollToTopEvents =
             remember {
                 MutableSharedFlow<Long>(
@@ -691,6 +701,14 @@ fun MetrolistApp(
 
         val playerConnection = playbackViewModel.playerConnection
         val playbackController = remember(playerConnection) { AndroidPlaybackController(playerConnection, coroutineScope) }
+        DisposableEffect(playerConnection) {
+            MioFocus.playSongs = { songs -> playerConnection.playQueue(songs, queueTitle = null) }
+            MioFocus.setPlaying = { playing -> if (playerConnection.isPlaying.value != playing) playerConnection.togglePlayPause() }
+            onDispose {
+                MioFocus.playSongs = null
+                MioFocus.setPlaying = null
+            }
+        }
         var listenTogetherManager by remember(playerConnection) {
             mutableStateOf(AndroidListenTogetherManager.currentManager)
         }
@@ -976,6 +994,9 @@ fun MetrolistApp(
             LocalPlaylistAdder provides addToPlaylist,
         ) {
             if (MioCarModeState.visible) MioCarMode(onDismiss = { MioCarModeState.visible = false })
+            val focusSong by playerConnection.currentSong.collectAsState()
+            MioFocusHost(nowPlaying = focusSong?.title)
+            MioLibraryTransferHost()
             if (MioProfileState.visible) {
                 MioProfilePanel(
                     accountName = authManager.accountName,
@@ -989,6 +1010,9 @@ fun MetrolistApp(
                             MioPanelEntry(MetrolistIcons.Outlined.Download, "Descargas") { navigator.navigate(Screen.Downloads) },
                             MioPanelEntry(MetrolistIcons.Outlined.Group, "Escuchar juntos") { navigator.navigate(Screen.ListenTogether) },
                             MioPanelEntry(MetrolistIcons.Outlined.DirectionsCar, "Modo carro") { MioCarModeState.visible = true },
+                            MioPanelEntry(MetrolistIcons.Outlined.Headphones, stringResource(Res.string.mio_focus_title)) {
+                                MioFocus.visible = true
+                            },
                             MioPanelEntry(MetrolistIcons.Outlined.SettingsBackupRestore, "Copia de seguridad") {
                                 navigator.navigate(Screen.BackupRestore)
                             },
@@ -1341,6 +1365,11 @@ fun MetrolistApp(
                                 navigator.navigate(Screen.ListenTogether)
                             }
 
+                            is IncomingDestination.MioImportLink -> {
+                                MioPendingImport.url = destination.url
+                                navigator.navigate(Screen.PlaylistImport)
+                            }
+
                             is IncomingDestination.PlaylistImport -> {
                                 navigator.navigate(Screen.PlaylistImport)
                                 destination.resultMessage?.let { message ->
@@ -1565,6 +1594,16 @@ fun MetrolistApp(
                                                     }
                                                 val topBarActions: @Composable RowScope.() -> Unit = {
                                                     if (mioTopBar && navigationState.topLevelRoute == Screen.Home) {
+                                                        TopBarIconButton(
+                                                            floating = useFloatingTopBar,
+                                                            onClick = { MioFocus.visible = true },
+                                                        ) {
+                                                            Icon(
+                                                                MetrolistIcons.Outlined.Headphones,
+                                                                contentDescription = stringResource(Res.string.mio_focus_open),
+                                                                modifier = Modifier.size(24.dp),
+                                                            )
+                                                        }
                                                         TopBarIconButton(
                                                             floating = useFloatingTopBar,
                                                             onClick = { MioCarModeState.visible = true },
@@ -2375,6 +2414,10 @@ sealed class IncomingDestination {
         val roomCode: String,
     ) : IncomingDestination()
 
+    data class MioImportLink(
+        val url: String,
+    ) : IncomingDestination()
+
     data class PlayVideo(
         val videoId: String,
         val playlistId: String?,
@@ -2427,6 +2470,7 @@ fun Intent.toIncomingDestination(): IncomingDestination? {
 }
 
 private fun incomingUrlDestination(rawUri: String): IncomingDestination? {
+    MioPendingImport.linkIn(rawUri)?.let { return IncomingDestination.MioImportLink(it) }
     parseYouTubePodcastId(rawUri)?.let { return IncomingDestination.Podcast(it) }
     parseListenTogetherInvitation(rawUri)?.let { return IncomingDestination.ListenTogether(it) }
     extractListenTogetherRoomCode(rawUri)?.let { return IncomingDestination.ListenTogether(it) }
