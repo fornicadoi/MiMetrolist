@@ -32,7 +32,7 @@ def env():
     settings = profile / "config" / "metrolist" / "settings.properties"
     if not settings.exists():
         settings.parent.mkdir(parents=True, exist_ok=True)
-        settings.write_text("desktopOnboardingComplete=true\n", encoding="utf-8")
+        settings.write_text("desktopOnboardingInitialized=true\ndesktopOnboardingComplete=true\n", encoding="utf-8")
     e["APPIMAGE_EXTRACT_AND_RUN"] = "1"
     e["LIBGL_ALWAYS_SOFTWARE"] = "1"
     e["SKIKO_RENDER_API"] = "SOFTWARE"
