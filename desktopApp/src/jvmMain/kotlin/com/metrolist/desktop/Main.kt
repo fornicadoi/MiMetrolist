@@ -584,6 +584,7 @@ private fun WindowScope.AppContent(
             PopupVisibility(visible = UiState.showSettings) {
                 SettingsOverlay(colorScheme)
             }
+            MioFocusHost(nowPlaying = PlayerState.currentTrack?.title, inWindow = true)
             YouTubeSyncSnackbar(AppState.snackbarHostState)
             val snackbarScheme = rememberUpdatedState(colorScheme)
             SnackbarHost(AppState.snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter)) { data ->
@@ -603,7 +604,6 @@ private fun WindowScope.AppContent(
             MiniplayerWindow()
             MioFloatingPanelWindows()
         }
-        MioFocusHost(nowPlaying = PlayerState.currentTrack?.title)
         MioLibraryTransferHost()
         LaunchedEffect(integrationsReady, Settings.shared.mioGlobalHotkeys) {
             MioGlobalHotkeys.update(integrationsReady && Settings.shared.mioGlobalHotkeys)

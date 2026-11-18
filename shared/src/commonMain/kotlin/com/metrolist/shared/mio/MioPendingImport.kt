@@ -35,8 +35,9 @@ object MioPendingImport {
             .trim()
             .split(whitespace)
             .firstOrNull { token ->
-                token.startsWith("http://", ignoreCase = true) || token.startsWith("https://", ignoreCase = true)
-            }?.takeIf { UnifiedPlaylistImporter.detectSource(it) in importSources }
+                // A pasted link may lack its scheme; requiring a path keeps plain words out.
+                '/' in token && UnifiedPlaylistImporter.detectSource(token) in importSources
+            }
 
     fun sourceName(link: String): String = UnifiedPlaylistImporter.detectSource(link).displayName
 

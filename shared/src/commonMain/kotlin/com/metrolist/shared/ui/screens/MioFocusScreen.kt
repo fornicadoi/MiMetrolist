@@ -5,6 +5,7 @@
 package com.metrolist.shared.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -69,15 +71,36 @@ import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.ui.icons.MetrolistIcons
 import org.jetbrains.compose.resources.stringResource
 
-/** Shows the focus screen while [MioFocus.visible]; the session keeps running when it is closed. */
+/**
+ * Shows the focus screen while [MioFocus.visible]; the session keeps running when it is closed.
+ * [inWindow] draws it over the current window instead of in a dialog, as the desktop app does with its overlays.
+ */
 @Composable
-fun MioFocusHost(nowPlaying: String? = null) {
+fun MioFocusHost(
+    nowPlaying: String? = null,
+    inWindow: Boolean = false,
+) {
     if (!MioFocus.visible) return
-    Dialog(
-        onDismissRequest = { MioFocus.visible = false },
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Box(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
+    if (inWindow) {
+        MioFocusContent(nowPlaying)
+    } else {
+        Dialog(
+            onDismissRequest = { MioFocus.visible = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) { MioFocusContent(nowPlaying) }
+    }
+}
+
+@Composable
+private fun MioFocusContent(nowPlaying: String?) {
+    run {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .pointerInput(Unit) { detectTapGestures { } }
+                .safeDrawingPadding(),
+        ) {
             IconButton(
                 onClick = { MioFocus.visible = false },
                 modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
