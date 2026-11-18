@@ -132,6 +132,15 @@ if wid:
     key("Return")
     time.sleep(8)
     shot("05-buscador-resultados")
+    # Un enlace de Spotify pegado en el buscador debe ofrecer importarlo.
+    key("ctrl+a")
+    sh("xdotool", "type", "--delay", "20", "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M")
+    time.sleep(3)
+    shot("08-enlace-spotify")
+    key("ctrl+a")
+    sh("xdotool", "type", "--delay", "60", "salsa")
+    key("Return")
+    time.sleep(6)
     # Reproduce el mejor resultado y abre la cola (acoplada) y las letras (flotantes).
     click(661, 334)
     time.sleep(12)
@@ -156,6 +165,12 @@ if wid:
         click(x + w - 4 - 32 * 3 - 16, y + 20)
         time.sleep(4)
         shot("07-letras-en-burbuja")
+    # Botón de audífonos de la barra de título: modo enfoque.
+    key("Escape")
+    click(108, 23)
+    time.sleep(3)
+    shot("09-modo-enfoque")
+    key("Escape")
 close(proc, "frio")
 
 # Segundo arranque: ya con la caché creada al cerrar.
