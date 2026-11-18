@@ -2,6 +2,11 @@
 
 package com.metrolist.shared.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.IconButton
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateFloatAsState
@@ -149,6 +154,10 @@ fun PlayerPrimaryControls(
     nextText: String = stringResource(Res.string.next),
     showLoadingIndicator: Boolean = true,
 ) {
+    if (Settings.shared.mioStyle && buttonHeight >= 48.dp) {
+        MioPrimaryControls(isPlaying, isLoading && showLoadingIndicator, onSkipPrevious, onTogglePlay, onSkipNext, modifier, previousText, nextText)
+        return
+    }
     val haptics = rememberMetrolistHaptics()
     val prevInteractionSource = remember { MutableInteractionSource() }
     val nextInteractionSource = remember { MutableInteractionSource() }
@@ -616,6 +625,57 @@ fun PlayerLikeShareButtons(
                     modifier = Modifier.size(iconSize),
                 )
             }
+        }
+    }
+}
+
+/** MiMetrolist: anterior y siguiente como iconos grandes y un botón redondo blanco en el centro. */
+@Composable
+private fun MioPrimaryControls(
+    isPlaying: Boolean,
+    isLoading: Boolean,
+    onSkipPrevious: (() -> Unit)?,
+    onTogglePlay: () -> Unit,
+    onSkipNext: (() -> Unit)?,
+    modifier: Modifier,
+    previousText: String,
+    nextText: String,
+) {
+    val haptics = rememberMetrolistHaptics()
+    val content = LocalContentColor.current
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        IconButton(onClick = { onSkipPrevious?.invoke() }, enabled = onSkipPrevious != null, modifier = Modifier.size(64.dp)) {
+            Icon(MetrolistIcons.Rounded.SkipPrevious, previousText, tint = content, modifier = Modifier.size(44.dp))
+        }
+        Box(
+            Modifier
+                .size(76.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+                .pointerHoverIcon(PointerIcon.Hand)
+                .clickable {
+                    haptics.toggle(!isPlaying)
+                    onTogglePlay()
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isLoading) {
+                LoadingIndicator(modifier = Modifier.size(32.dp), color = Color.Black)
+            } else {
+                Icon(
+                    if (isPlaying) MetrolistIcons.Rounded.Pause else MetrolistIcons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(42.dp),
+                )
+            }
+        }
+        IconButton(onClick = { onSkipNext?.invoke() }, enabled = onSkipNext != null, modifier = Modifier.size(64.dp)) {
+            Icon(MetrolistIcons.Rounded.SkipNext, nextText, tint = content, modifier = Modifier.size(44.dp))
         }
     }
 }

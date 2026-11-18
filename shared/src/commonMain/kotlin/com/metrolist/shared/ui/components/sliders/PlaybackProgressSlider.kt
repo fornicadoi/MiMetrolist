@@ -67,6 +67,8 @@ fun PlaybackProgressSlider(
     trackThicknessDp: Float = Settings.shared.sliderTrackThicknessDp,
     valueProvider: () -> Float = { value },
 ) {
+    // MiMetrolist: barra de progreso delgada.
+    val style = if (Settings.shared.mioStyle) SliderStyle.SLIM else style
     val interactionSource = remember { MutableInteractionSource() }
 
     val latestValueProvider by rememberUpdatedState(valueProvider)

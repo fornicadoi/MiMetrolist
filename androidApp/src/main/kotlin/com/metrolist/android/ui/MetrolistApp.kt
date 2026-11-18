@@ -192,6 +192,9 @@ import com.metrolist.android.ui.components.DesktopCaptionBar
 import com.metrolist.android.ui.components.DesktopMiniPlayerHeight
 import com.metrolist.android.mio.MioAlarmScheduler
 import com.metrolist.android.mio.MioMaintenance
+import com.metrolist.android.mio.MioPanelEntry
+import com.metrolist.android.mio.MioProfilePanel
+import com.metrolist.android.mio.MioProfileState
 import com.metrolist.android.mio.MioCarMode
 import com.metrolist.android.mio.MioCarModeState
 import com.metrolist.android.mio.MioReleaseNotifier
@@ -973,6 +976,28 @@ fun MetrolistApp(
             LocalPlaylistAdder provides addToPlaylist,
         ) {
             if (MioCarModeState.visible) MioCarMode(onDismiss = { MioCarModeState.visible = false })
+            if (MioProfileState.visible) {
+                MioProfilePanel(
+                    accountName = authManager.accountName,
+                    accountThumbnail = authManager.accountThumbnail,
+                    entries =
+                        listOf(
+                            MioPanelEntry(MetrolistIcons.Outlined.BarChart, "Estadísticas y Tu año en música") {
+                                navigator.navigate(Screen.Statistics)
+                            },
+                            MioPanelEntry(MetrolistIcons.Outlined.History, "Recientes") { navigator.navigate(Screen.History) },
+                            MioPanelEntry(MetrolistIcons.Outlined.Download, "Descargas") { navigator.navigate(Screen.Downloads) },
+                            MioPanelEntry(MetrolistIcons.Outlined.Group, "Escuchar juntos") { navigator.navigate(Screen.ListenTogether) },
+                            MioPanelEntry(MetrolistIcons.Outlined.DirectionsCar, "Modo carro") { MioCarModeState.visible = true },
+                            MioPanelEntry(MetrolistIcons.Outlined.SettingsBackupRestore, "Copia de seguridad") {
+                                navigator.navigate(Screen.BackupRestore)
+                            },
+                            MioPanelEntry(MetrolistIcons.Outlined.Settings, "Configuración") { navigator.navigate(Screen.Settings) },
+                        ),
+                    onAccount = { MioProfileState.accountMenu = true },
+                    onDismiss = { MioProfileState.visible = false },
+                )
+            }
             val appAccountButton: @Composable (Modifier) -> Unit = { buttonModifier ->
                 val accountName = authManager.accountName
                 val accountThumbnail = authManager.accountThumbnail
@@ -980,7 +1005,9 @@ fun MetrolistApp(
                 val updatePending = stringResource(Res.string.update_pending)
                 Box {
                     IconButton(
-                        onClick = { showAccountMenu = true },
+                        onClick = {
+                            if (Settings.shared.mioStyle && !useDesktopUi) MioProfileState.visible = true else showAccountMenu = true
+                        },
                         modifier =
                             (
                                 if (hasPendingUpdate) {
@@ -1001,9 +1028,12 @@ fun MetrolistApp(
                             hasPendingUpdate = hasPendingUpdate,
                         )
                     }
-                    if (showAccountMenu) {
+                    if (showAccountMenu || MioProfileState.accountMenu) {
                         AccountMenu(
-                            onClose = { showAccountMenu = false },
+                            onClose = {
+                                showAccountMenu = false
+                                MioProfileState.accountMenu = false
+                            },
                             onNavigateToLogin = { navigator.navigate(Screen.Login) },
                             onNavigateToTokenLogin = { navigator.navigate(Screen.TokenLogin) },
                             onNavigateToSwitchChannel = {
