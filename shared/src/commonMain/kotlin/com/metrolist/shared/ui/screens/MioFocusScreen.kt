@@ -103,7 +103,8 @@ private fun MioFocusContent(nowPlaying: String?) {
         ) {
             IconButton(
                 onClick = { MioFocus.visible = false },
-                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                // Below the desktop window buttons, so it is never mistaken for closing the app.
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 52.dp, end = 16.dp),
             ) {
                 Icon(MetrolistIcons.Default.Close, stringResource(Res.string.mio_focus_close), tint = Color.White)
             }
