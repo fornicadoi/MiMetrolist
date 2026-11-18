@@ -642,7 +642,7 @@ private fun LibraryHeader(
     onFilterChange: (LibraryFilter?) -> Unit,
     onGridViewChange: (Boolean) -> Unit,
 ) {
-    if (Settings.shared.mioStyle && !isDesktop) {
+    if (Settings.shared.mioStyle) {
         MioLibraryHeader(text, selectedFilter, isGridView, sortType, isSearchOpen, onSearchToggle, onFilterChange, onGridViewChange)
         return
     }

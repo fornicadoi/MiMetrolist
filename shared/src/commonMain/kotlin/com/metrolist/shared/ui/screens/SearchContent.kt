@@ -584,7 +584,7 @@ private fun RecentSectionTitle(
         Text(
             text = title,
             style = MaterialTheme.typography.headlineMediumEmphasized,
-            color = MaterialTheme.colorScheme.primary,
+            color = mioSectionTitleColor(),
             modifier = Modifier.weight(1f),
         )
         IconButton(onClick = onClearClick, shapes = IconButtonDefaults.shapes()) {
@@ -722,7 +722,7 @@ private fun SearchSuggestionsList(
                     Text(
                         text = text.suggestions,
                         style = MaterialTheme.typography.headlineMediumEmphasized,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = mioSectionTitleColor(),
                         modifier =
                             Modifier
                                 .widthIn(
@@ -753,7 +753,7 @@ private fun SearchSuggestionsList(
                     Text(
                         text = text.recommended,
                         style = MaterialTheme.typography.headlineMediumEmphasized,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = mioSectionTitleColor(),
                         modifier =
                             Modifier
                                 .widthIn(
@@ -1330,7 +1330,7 @@ private fun TopResultCard(
                                                 .weight(1f)
                                                 .height(48.dp),
                                         shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = mioSectionTitleColor(),
                                         contentColor = MaterialTheme.colorScheme.onPrimary,
                                     ) {
                                         Row(
@@ -1629,7 +1629,7 @@ private fun TopResultCard(
                                                 enabled = podcastActions?.isLoading != true,
                                                 modifier = Modifier.height(40.dp),
                                                 shape = RoundedCornerShape(100.dp),
-                                                color = MaterialTheme.colorScheme.primary,
+                                                color = mioSectionTitleColor(),
                                                 contentColor = MaterialTheme.colorScheme.onPrimary,
                                             ) {
                                                 Row(
@@ -1702,7 +1702,7 @@ private fun TopResultCard(
                                         enabled = podcastActions?.isLoading != true,
                                         modifier = Modifier.height(36.dp).weight(1f),
                                         shape = RoundedCornerShape(100.dp),
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = mioSectionTitleColor(),
                                         contentColor = MaterialTheme.colorScheme.onPrimary,
                                     ) {
                                         Row(
@@ -2126,7 +2126,7 @@ private fun SectionHeader(
         Text(
             text = title,
             style = titleStyle,
-            color = MaterialTheme.colorScheme.primary,
+            color = mioSectionTitleColor(),
             maxLines = 1,
         )
     }
@@ -2277,3 +2277,8 @@ private fun MioRecentSearchRow(
         )
     }
 }
+
+/** MiMetrolist: títulos de sección en blanco en lugar del color de acento. */
+@Composable
+private fun mioSectionTitleColor() =
+    if (Settings.shared.mioStyle) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary

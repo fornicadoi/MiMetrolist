@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.see_all
+import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.ui.components.images.AsyncImage
 import com.metrolist.shared.ui.icons.MetrolistIcons
 import com.metrolist.shared.ui.utils.artistArtworkShape
@@ -85,7 +87,16 @@ fun SectionTitle(
     onShuffleClick: (() -> Unit)? = null,
     isWide: Boolean = false,
 ) {
-    val titleStyle = if (isWide) MaterialTheme.typography.headlineMediumEmphasized else MaterialTheme.typography.headlineSmallEmphasized
+    // MiMetrolist: títulos blancos en negrita y "Mostrar todo" en gris, sin botones de colores.
+    val mio = Settings.shared.mioStyle
+    val titleStyle =
+        if (mio) {
+            MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold)
+        } else if (isWide) {
+            MaterialTheme.typography.headlineMediumEmphasized
+        } else {
+            MaterialTheme.typography.headlineSmallEmphasized
+        }
     val rowHeight = if (isWide || label != null) 60.dp else 50.dp
 
     Row(
@@ -138,11 +149,20 @@ fun SectionTitle(
                 style = titleStyle,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.primary,
+                color = if (mio) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
             )
         }
 
-        if (onClick != null) {
+        if (onClick != null && mio) {
+            Text(
+                text = seeAllLabel ?: stringResource(Res.string.see_all),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
+        } else if (onClick != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (showSeeAllLabel && seeAllLabel != null) {
                     Text(
@@ -198,7 +218,7 @@ private fun SectionActionButton(
                 Icon(
                     imageVector = icon,
                     contentDescription = contentDescription,
-                    tint = MaterialTheme.colorScheme.onPrimary,
+                    tint = if (Settings.shared.mioStyle) Color.Black else MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(iconSize),
                 )
             }
@@ -207,7 +227,7 @@ private fun SectionActionButton(
             Surface(
                 modifier = surfaceSize,
                 shape = RoundedCornerShape(100.dp),
-                color = MaterialTheme.colorScheme.primary,
+                color = if (Settings.shared.mioStyle) Color.White else MaterialTheme.colorScheme.primary,
                 onClick = onClick,
                 content = content,
             )
@@ -215,7 +235,7 @@ private fun SectionActionButton(
             Surface(
                 modifier = surfaceSize,
                 shape = RoundedCornerShape(100.dp),
-                color = MaterialTheme.colorScheme.primary,
+                color = if (Settings.shared.mioStyle) Color.White else MaterialTheme.colorScheme.primary,
                 content = content,
             )
         }
