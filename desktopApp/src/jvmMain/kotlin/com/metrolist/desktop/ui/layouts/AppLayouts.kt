@@ -505,6 +505,7 @@ private fun ColumnScope.MainLayoutContent(
 ) {
     BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxSize()) {
         val availableSupportingWidth = (maxWidth - LayoutConstants.MinimumPrimaryPaneWidth).coerceAtLeast(0.dp)
+        val mioLibraryPanel = Settings.shared.mioStyle && maxWidth >= 1100.dp
         val playerDrawersOverlayContent = availableSupportingWidth < 280.dp
         val overlayWidth = maxWidth
         val deviceConnectWidth = deviceConnectSideSheetWidth(maxWidth)
@@ -545,7 +546,7 @@ private fun ColumnScope.MainLayoutContent(
                         .background(if (Settings.shared.mioStyle) MioFrameColor else colorScheme.surfaceContainer)
                         .padding(8.dp),
             ) {
-                if (Settings.shared.mioStyle && maxWidth >= 1100.dp) {
+                if (mioLibraryPanel) {
                     MioLibraryPanel(Modifier.width(300.dp).fillMaxHeight())
                     Spacer(Modifier.width(8.dp))
                 }
