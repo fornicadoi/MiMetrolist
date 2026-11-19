@@ -22,7 +22,20 @@ OUT = Path(sys.argv[2])
 OUT.mkdir(parents=True, exist_ok=True)
 QUERY = "Daft Punk Get Lucky"
 BLOCK_HINTS = ("not a bot", "sign in to confirm", "login_required", "http 429", "status code 429", "too many requests", "unusual traffic")
-SKIP_WORDS = ("skip", "continue", "next", "get started", "done", "allow", "ok", "got it", "not now", "accept", "agree", "close")
+# Botones de la bienvenida y de avisos, en orden de preferencia ("No" rechaza los reportes de errores).
+SKIP_WORDS = (
+    "begin setup",
+    "continue with an empty library",
+    "no",
+    "continue",
+    "finish",
+    "allow",
+    "skip",
+    "not now",
+    "got it",
+    "ok",
+    "close",
+)
 step = 0
 report = []
 last_root = None
@@ -158,17 +171,14 @@ def finish(outcome, detail):
     sys.exit(1 if outcome == "ERROR" else 0)
 
 
-def dismiss_dialogs(rounds=6):
+def dismiss_dialogs(rounds=14):
     for _ in range(rounds):
         root = snapshot("pantalla")
-        button = None
-        for node in nodes(root):
-            if node["clickable"] and label(node) in SKIP_WORDS:
-                button = node
-                break
-        if button is None:
+        labels = {label(node): node for node in nodes(root) if label(node)}
+        word = next((w for w in SKIP_WORDS if w in labels), None)
+        if word is None:
             return root
-        tap(button, "cerrar aviso")
+        tap(labels[word], "bienvenida o aviso")
     return snapshot("pantalla")
 
 
@@ -178,9 +188,12 @@ def main():
         finish("ERROR", "No se encontró una canción para probar")
     report.append(f"cancion={title} https://music.youtube.com/watch?v={vid}")
     adb("logcat", "-c")
+    adb("shell", "monkey", "-p", PACKAGE, "-c", "android.intent.category.LAUNCHER", "1")
+    time.sleep(15)
+    dismiss_dialogs()
     adb("shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d", f"https://music.youtube.com/watch?v={vid}", PACKAGE)
     time.sleep(20)
-    root = dismiss_dialogs()
+    root = dismiss_dialogs(4)
 
     # Abrir el reproductor completo si solo está el mini reproductor.
     for _ in range(3):

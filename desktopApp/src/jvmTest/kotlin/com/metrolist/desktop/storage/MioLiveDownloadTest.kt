@@ -1,9 +1,13 @@
 package com.metrolist.desktop.storage
 
 import com.metrolist.desktop.di.composeStateModule
+import com.metrolist.desktop.state.DesktopLocaleManager
 import com.metrolist.shared.model.SearchFilter
 import com.metrolist.shared.model.SongItem
+import com.metrolist.shared.settings.Settings
+import com.metrolist.shared.state.GlobalYouTube
 import com.metrolist.shared.state.GlobalYouTubeRepository
+import com.metrolist.shared.state.applyContentRegion
 import com.metrolist.shared.state.coreModule
 import com.metrolist.shared.youtube.di.sharedModule
 import kotlinx.coroutines.flow.first
@@ -57,6 +61,12 @@ class MioLiveDownloadTest {
         val originalOut = System.out
         System.setOut(PrintStream(Tee(originalOut, captured), true))
         startKoin { modules(coreModule, sharedModule, composeStateModule) }
+        // Same region setup as the app's startup in Main.kt.
+        GlobalYouTube.applyContentRegion(
+            contentCountry = Settings.shared.contentCountry,
+            contentLanguage = Settings.shared.contentLanguage,
+            systemLocale = DesktopLocaleManager.systemLocale,
+        )
         val lines = mutableListOf<String>()
         var outcome = "ERROR"
         try {
