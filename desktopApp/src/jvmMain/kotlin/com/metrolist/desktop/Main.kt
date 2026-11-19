@@ -635,10 +635,10 @@ private fun WindowScope.AppContent(
         }
 
         // MiMetrolist: the floating panels inherit this window's theme.
-        if (integrationsReady) MioFloatingPanelWindows()
+        MioFloatingPanelWindows()
         MioLibraryTransferHost()
-        LaunchedEffect(integrationsReady, Settings.shared.mioGlobalHotkeys) {
-            MioGlobalHotkeys.update(integrationsReady && Settings.shared.mioGlobalHotkeys)
+        LaunchedEffect(Settings.shared.mioGlobalHotkeys) {
+            MioGlobalHotkeys.update(Settings.shared.mioGlobalHotkeys)
         }
         DisposableEffect(Unit) {
             MioFocus.playSongs = { songs -> PlayerState.playTrack(songs.first(), songs) }
