@@ -115,6 +115,14 @@ class MioLiveDownloadTest {
             System.setOut(originalOut)
             stopKoin()
         }
+        if (outcome != "OK") {
+            captured
+                .toString()
+                .lines()
+                .filter { line -> listOf("fail", "error", "exception", "denied", "http ").any { line.contains(it, ignoreCase = true) } }
+                .takeLast(20)
+                .forEach { lines += "log=${it.take(400)}" }
+        }
         if (outcome != "OK" && isYouTubeBlock(captured.toString() + lines.joinToString("\n"))) outcome = "BLOQUEO"
         report.writeText((listOf("resultado=$outcome") + lines).joinToString("\n") + "\n")
         println(report.readText())

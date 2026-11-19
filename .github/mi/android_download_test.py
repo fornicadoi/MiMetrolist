@@ -210,12 +210,17 @@ def main():
         finish("ERROR", "No apareció el menú del reproductor")
     tap(menu, "menú del reproductor")
     root = snapshot("menu")
-    download = find(root, "download", exact=True) or find(root, "download")
-    if not download:
-        adb("shell", "input", "swipe", "540", "1800", "540", "900", "400")
+    size = re.findall(r"(\d+)x(\d+)", adb("shell", "wm", "size"))
+    width, height = map(int, size[-1]) if size else (1080, 2400)
+    download = find(root, "download", exact=True)
+    for _ in range(4):
+        if download:
+            break
+        x = str(width // 2)
+        adb("shell", "input", "swipe", x, str(height * 85 // 100), x, str(height * 45 // 100), "500")
         time.sleep(2)
         root = snapshot("menu-abajo")
-        download = find(root, "download", exact=True) or find(root, "download")
+        download = find(root, "download", exact=True)
     if not download:
         finish("ERROR", "No apareció la opción Download en el menú")
     tap(download, "descargar")
