@@ -16,14 +16,13 @@ import com.metrolist.android.BuildConfig
 import com.metrolist.android.MainActivity
 import com.metrolist.android.R
 import com.metrolist.shared.generated.resources.Res
-import com.metrolist.shared.generated.resources.updates_notification_text
-import com.metrolist.shared.generated.resources.updates_notification_title
+import com.metrolist.shared.generated.resources.mio_notification_update_text
+import com.metrolist.shared.generated.resources.mio_notification_update_title
 import com.metrolist.shared.network.sharedOkHttpClient
 import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.update.NIGHTLY_TAG
 import com.metrolist.shared.update.ReleaseVersion
 import com.metrolist.shared.update.checkNightly
-import com.metrolist.shared.update.followsNightlyUpdates
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -82,6 +81,7 @@ data class GitHubReleaseAsset(
     val size: Long,
     val digest: String? = null,
     @SerialName("browser_download_url") val downloadUrl: String,
+    @SerialName("updated_at") val updatedAt: String? = null,
 )
 
 sealed interface AppUpdateState {
@@ -228,7 +228,8 @@ object AppUpdateManager {
                                 compareVersions(release.version, currentVersion) > 0
                         } ?: allReleases.firstOrNull(GitHubRelease::isNightly)?.takeIf { nightly ->
                             // A crash offers the nightly even on the stable channel, since it may already carry the fix.
-                            (crashRecovery || followsNightlyUpdates(Settings.shared.updateChannel, currentVersion)) &&
+                            // MiMetrolist only publishes nightlies, so they are followed whatever channel a restored backup set.
+                            (crashRecovery || mioFollowsNightly()) &&
                                 isNewNightly(nightly, confirm = !crashRecovery)
                         }
                     if (!crashRecovery) Settings.shared.cachedAvailableUpdateJson = update?.let { json.encodeToString(it) }.orEmpty()
@@ -408,11 +409,13 @@ object AppUpdateManager {
             .getOrNull()
             ?.takeIf {
                 if (it.isNightly) {
-                    followsNightlyUpdates(Settings.shared.updateChannel, currentVersion) && isNewNightly(it, confirm = true)
+                    mioFollowsNightly() && isNewNightly(it, confirm = true)
                 } else {
                     it.isPublishedStable && compareVersions(it.version, currentVersion) > 0
                 }
             }
+
+    private fun mioFollowsNightly(): Boolean = true
 
     private fun isNewNightly(
         release: GitHubRelease,
@@ -457,8 +460,8 @@ object AppUpdateManager {
             NotificationCompat
                 .Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(getString(Res.string.updates_notification_title, release.version))
-                .setContentText(getString(Res.string.updates_notification_text))
+                .setContentTitle(getString(Res.string.mio_notification_update_title))
+                .setContentText(getString(Res.string.mio_notification_update_text))
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .build()

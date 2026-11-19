@@ -171,6 +171,7 @@ import com.metrolist.android.deviceconnect.AndroidDeviceConnect
 import com.metrolist.android.extensions.findActivity
 import com.metrolist.android.listentogether.AndroidListenTogetherManager
 import com.metrolist.android.locale.AppLocale
+import com.metrolist.android.mio.MioUpdateDialog
 import com.metrolist.android.playback.AndroidPlaybackController
 import com.metrolist.android.playback.ListenTogetherPlaybackRequest
 import com.metrolist.android.playback.LocalPlayerConnection
@@ -299,10 +300,6 @@ import com.metrolist.shared.generated.resources.play
 import com.metrolist.shared.generated.resources.profile
 import com.metrolist.shared.generated.resources.search
 import com.metrolist.shared.generated.resources.update_pending
-import com.metrolist.shared.generated.resources.updates_action
-import com.metrolist.shared.generated.resources.updates_available_message
-import com.metrolist.shared.generated.resources.updates_available_title
-import com.metrolist.shared.generated.resources.updates_changelog_preview
 import com.metrolist.shared.generated.resources.updates_pending_parenthetical
 import com.metrolist.shared.generated.resources.youtube_music
 import com.metrolist.shared.generated.resources.youtube_session_expired_message
@@ -695,42 +692,16 @@ fun MetrolistApp(
 
         SupportPrompt()
 
-        PopupContent(updatePrompt) { release ->
-            AlertDialog(
-                onDismissRequest = { updatePrompt = null },
-                title = { Text(stringResource(Res.string.updates_available_title, release.version)) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(stringResource(Res.string.updates_available_message))
-                        Text(
-                            text = stringResource(Res.string.updates_changelog_preview),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text = release.changelogSnippet(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 7,
-                        )
-                    }
+        // MiMetrolist: its own update dialog, with the news of that version.
+        updatePrompt?.let { release ->
+            MioUpdateDialog(
+                release = release,
+                onUpdate = {
+                    updatePrompt = null
+                    navigator.navigate(Screen.UpdateDetails)
+                    updateScope.launch { AppUpdateManager.download(context, release) }
                 },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            updatePrompt = null
-                            navigator.navigate(Screen.UpdateDetails)
-                            updateScope.launch { AppUpdateManager.download(context, release) }
-                        },
-                        shapes = ButtonDefaults.shapes(),
-                    ) {
-                        Text(stringResource(Res.string.updates_action))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { updatePrompt = null }, shapes = ButtonDefaults.shapes()) {
-                        Text(stringResource(Res.string.action_not_now))
-                    }
-                },
+                onLater = { updatePrompt = null },
             )
         }
 
@@ -2364,34 +2335,6 @@ private fun AppTitleWithUpdateWarning(
             )
         }
     }
-}
-
-private fun GitHubRelease.changelogSnippet(): String {
-    val lines =
-        body
-            .orEmpty()
-            .lineSequence()
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .toList()
-    val versionHeading =
-        lines.indexOfFirst { line ->
-            line.trimStart('#', ' ').startsWith("Version $version", ignoreCase = true)
-        }
-    val firstChangesHeading =
-        lines.indexOfFirst { line ->
-            line.startsWith('#') && !line.contains("maintenance mode", ignoreCase = true)
-        }
-    val startIndex =
-        when {
-            versionHeading >= 0 -> versionHeading + 1
-            firstChangesHeading >= 0 -> firstChangesHeading
-            else -> 0
-        }
-    return lines
-        .subList(startIndex, lines.size)
-        .take(15)
-        .joinToString("\n")
 }
 
 val navTabMetadata: Map<String, Any> = mapOf("nav_tab" to true)

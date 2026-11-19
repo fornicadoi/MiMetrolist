@@ -189,4 +189,11 @@
     <string name="mio_connect_app">Conectar una app</string>
     <string name="mio_connect_app_desc">Spotify, Apple Music, Deezer, Tidal o Amazon Music</string>
     <string name="mio_connect_app_title">¿Qué app quieres conectar?</string>
+    <string name="mio_update_title">Nueva versión de MiMetrolist</string>
+    <string name="mio_update_version">Versión %1$s</string>
+    <string name="mio_update_version_date">Versión %1$s · compilada el %2$s</string>
+    <string name="mio_update_news">Novedades</string>
+    <string name="mio_update_now">Actualizar ahora</string>
+    <string name="mio_notification_update_title">Nueva versión de MiMetrolist</string>
+    <string name="mio_notification_update_text">Toca para ver las novedades y actualizar</string>
 </resources>

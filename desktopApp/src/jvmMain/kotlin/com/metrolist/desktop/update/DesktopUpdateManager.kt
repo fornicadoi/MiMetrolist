@@ -13,7 +13,6 @@ import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.update.NIGHTLY_TAG
 import com.metrolist.shared.update.ReleaseVersion
 import com.metrolist.shared.update.checkNightly
-import com.metrolist.shared.update.followsNightlyUpdates
 import com.metrolist.shared.utils.OsUtil
 import com.sun.jna.platform.win32.Advapi32Util
 import com.sun.jna.platform.win32.WinReg
@@ -123,7 +122,8 @@ object DesktopUpdateManager {
     internal fun availableUpdate(releases: List<GitHubDesktopRelease>): GitHubDesktopRelease? =
         releases.firstOrNull { isNewerDesktopVersion(it.version, BuildConfig.APP_VERSION) }
             ?: newNightly(releases, confirm = true)
-                ?.takeIf { followsNightlyUpdates(Settings.shared.updateChannel, BuildConfig.APP_VERSION) }
+                // MiMetrolist only publishes nightlies, so they are followed whatever channel a restored backup set.
+                ?.takeIf { true }
 
     internal fun findUpdate(
         releasesJson: String,
