@@ -143,6 +143,26 @@ def song_id():
     return walk(data) or (None, None)
 
 
+def youtube_blocks_runner(vid):
+    """Pregunta a YouTube si deja reproducir la canción sin cuenta desde este servidor."""
+    body = {
+        "context": {"client": {"clientName": "WEB_REMIX", "clientVersion": "1.20241106.01.00"}},
+        "videoId": vid,
+    }
+    request = urllib.request.Request(
+        "https://music.youtube.com/youtubei/v1/player?prettyPrint=false",
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0", "Origin": "https://music.youtube.com"},
+    )
+    try:
+        status = json.loads(urllib.request.urlopen(request, timeout=30).read()).get("playabilityStatus", {})
+    except Exception as error:
+        report.append(f"youtube=sin respuesta ({error})")
+        return False
+    report.append(f"youtube={status.get('status')} {status.get('reason', '')}".strip())
+    return status.get("status") == "LOGIN_REQUIRED"
+
+
 def downloaded_files():
     listing = adb("shell", f"su 0 find /data/data/{PACKAGE}/files/downloads -type f -size +100k 2>/dev/null")
     if not listing.strip():
@@ -157,8 +177,13 @@ def logcat_text():
     return adb("logcat", "-d", timeout=120)
 
 
+blocked = False
+
+
 def finish(outcome, detail):
     log = logcat_text()
+    if outcome == "ERROR" and blocked:
+        outcome = "BLOQUEO"
     (OUT / "logcat.txt").write_text(log)
     if outcome == "ERROR" and any(h in log.lower() for h in BLOCK_HINTS):
         outcome = "BLOQUEO"
@@ -193,6 +218,8 @@ def main():
     if not vid:
         finish("ERROR", "No se encontró una canción para probar")
     report.append(f"cancion={title} https://music.youtube.com/watch?v={vid}")
+    global blocked
+    blocked = youtube_blocks_runner(vid)
     adb("logcat", "-G", "16M")
     adb("logcat", "-c")
     adb("shell", "monkey", "-p", PACKAGE, "-c", "android.intent.category.LAUNCHER", "1")
