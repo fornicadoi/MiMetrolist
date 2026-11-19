@@ -376,6 +376,11 @@ fun WindowScope.TopBarWithPlayer(
                     onDismissAccountMenu = { showAccountPanel = false },
                     colorScheme = colorScheme,
                 )
+                if (showSearchInTopBar) {
+                    IconButton(onClick = { UiState.showFloatingSearch = true }, shapes = IconButtonDefaults.shapes()) {
+                        Icon(MetrolistIcons.Default.Search, contentDescription = stringResource(Res.string.search))
+                    }
+                }
                 navItems()
                 DevtoolsButton(colorScheme)
             }

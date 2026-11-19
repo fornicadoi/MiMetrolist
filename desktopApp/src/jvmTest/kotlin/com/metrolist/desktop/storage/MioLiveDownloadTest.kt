@@ -2,12 +2,14 @@ package com.metrolist.desktop.storage
 
 import com.metrolist.desktop.di.composeStateModule
 import com.metrolist.desktop.state.DesktopLocaleManager
+import com.metrolist.innertubex.extraction.AudioQuality
 import com.metrolist.shared.model.SearchFilter
 import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.state.GlobalYouTube
 import com.metrolist.shared.state.GlobalYouTubeRepository
 import com.metrolist.shared.state.applyContentRegion
+import com.metrolist.shared.youtube.extraction.models.toContentHints
 import com.metrolist.shared.state.coreModule
 import com.metrolist.shared.youtube.di.sharedModule
 import kotlinx.coroutines.flow.first
@@ -85,6 +87,18 @@ class MioLiveDownloadTest {
                     return@runBlocking
                 }
                 lines += "cancion=${song.title} - ${song.artists.joinToString(", ") { it.name }} (${song.id})"
+                // Same stream request DownloadManager makes, but keeping the reason when it fails.
+                val hints =
+                    song
+                        .toContentHints()
+                        .copy(wantVideo = false, playbackClientOverrideId = null, sabrFirst = false)
+                        .withStreamCapabilities(allowHls = false, allowSabr = true, allowBoundedRange = true)
+                try {
+                    val resource = GlobalYouTubeRepository.streamResolver?.resolveRemote(song.id, hints, AudioQuality.AUTO, sourceSong = song)
+                    lines += "flujo=" + (resource?.let { "sabr=${it.isSabr} archivo=${it.isDirectFile}" } ?: "ninguno")
+                } catch (error: Throwable) {
+                    generateSequence(error) { it.cause }.take(6).forEach { lines += "causa=${it::class.simpleName}: ${it.message?.take(300)}" }
+                }
                 val started = System.currentTimeMillis()
                 DownloadManager.download(song)
                 val state =
