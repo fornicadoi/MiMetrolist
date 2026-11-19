@@ -3,6 +3,7 @@ package com.metrolist.desktop.storage
 import com.metrolist.desktop.di.composeStateModule
 import com.metrolist.desktop.state.DesktopLocaleManager
 import com.metrolist.innertubex.extraction.AudioQuality
+import com.metrolist.innertubex.extraction.StreamResolveException
 import com.metrolist.shared.model.SearchFilter
 import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.settings.Settings
@@ -98,6 +99,10 @@ class MioLiveDownloadTest {
                     lines += "flujo=" + (resource?.let { "sabr=${it.isSabr} archivo=${it.isDirectFile}" } ?: "ninguno")
                 } catch (error: Throwable) {
                     generateSequence(error) { it.cause }.take(6).forEach { lines += "causa=${it::class.simpleName}: ${it.message?.take(300)}" }
+                    (error as? StreamResolveException)?.let { failure ->
+                        lines += "motivo=${failure.reason}"
+                        failure.diagnostics?.attempts?.take(25)?.forEach { lines += "intento=${it.toString().take(400)}" }
+                    }
                 }
                 val started = System.currentTimeMillis()
                 DownloadManager.download(song)
