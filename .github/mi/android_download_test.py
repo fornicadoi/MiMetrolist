@@ -21,10 +21,11 @@ PACKAGE = sys.argv[1]
 OUT = Path(sys.argv[2])
 OUT.mkdir(parents=True, exist_ok=True)
 QUERY = "Daft Punk Get Lucky"
-BLOCK_HINTS = ("not a bot", "sign in to confirm", "login_required", "429", "too many requests", "unusual traffic")
+BLOCK_HINTS = ("not a bot", "sign in to confirm", "login_required", "http 429", "status code 429", "too many requests", "unusual traffic")
 SKIP_WORDS = ("skip", "continue", "next", "get started", "done", "allow", "ok", "got it", "not now", "accept", "agree", "close")
 step = 0
 report = []
+last_root = None
 
 
 def adb(*args, check=False, timeout=60):
@@ -42,10 +43,12 @@ def snapshot(name):
         subprocess.run(["adb", "exec-out", "screencap", "-p"], stdout=image, timeout=60)
     adb("shell", "uiautomator", "dump", "/sdcard/ui.xml")
     adb("pull", "/sdcard/ui.xml", f"{base}.xml")
+    global last_root
     try:
-        return ET.parse(f"{base}.xml").getroot()
+        last_root = ET.parse(f"{base}.xml").getroot()
     except Exception:
-        return None
+        last_root = None
+    return last_root
 
 
 def nodes(root):
@@ -143,6 +146,12 @@ def finish(outcome, detail):
     (OUT / "logcat.txt").write_text(log)
     if outcome == "ERROR" and any(h in log.lower() for h in BLOCK_HINTS):
         outcome = "BLOQUEO"
+    hints = sorted({h for h in BLOCK_HINTS if h in log.lower()})
+    if hints:
+        report.append("pistas=" + ", ".join(hints))
+    if outcome != "OK" and last_root is not None:
+        visible = [f"{label(n)}{'*' if n['clickable'] else ''}@{n['center'][0]},{n['center'][1]}" for n in nodes(last_root) if label(n)]
+        report.append("pantalla=" + " | ".join(visible[:60]))
     lines = [f"resultado={outcome}", f"detalle={detail}", *report]
     (OUT / "resultado.txt").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))

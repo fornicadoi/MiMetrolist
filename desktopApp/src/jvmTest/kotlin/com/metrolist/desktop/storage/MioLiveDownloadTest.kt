@@ -116,7 +116,8 @@ class MioLiveDownloadTest {
             "not a bot",
             "Sign in to confirm",
             "LOGIN_REQUIRED",
-            "429",
+            "HTTP 429",
+            "status code 429",
             "Too Many Requests",
             "unusual traffic",
         ).any { log.contains(it, ignoreCase = true) }

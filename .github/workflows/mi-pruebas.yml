@@ -53,6 +53,7 @@ jobs:
         if: always()
         run: |
           f="$RUNNER_TEMP/pc/resultado.txt"
+          cat "$f" 2>/dev/null || true
           { echo "## PC"; echo '```'; cat "$f" 2>/dev/null || echo "resultado=ERROR (la prueba no llegó a correr)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Guardar resultado
@@ -64,6 +65,8 @@ jobs:
           if-no-files-found: ignore
 
   android:
+    permissions:
+      contents: write
     if: github.event.repository.fork && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -111,12 +114,19 @@ jobs:
         if: always()
         run: |
           f="$RUNNER_TEMP/android/resultado.txt"
+          cat "$f" 2>/dev/null || true
           { echo "## Android"; echo '```'; cat "$f" 2>/dev/null || echo "resultado=ERROR (la prueba no llegó a correr)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Guardar capturas
+      - name: Publicar capturas
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: prueba-android
-          path: ${{ runner.temp }}/android
-          if-no-files-found: ignore
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          test -d android || exit 0
+          zip -qr prueba-android.zip android
+          gh release delete pruebas --cleanup-tag --yes -R "$GITHUB_REPOSITORY" || true
+          gh release create pruebas prueba-android.zip -R "$GITHUB_REPOSITORY" --prerelease \
+            --target "$GITHUB_SHA" --title "Pruebas ${GITHUB_SHA::7}" \
+            --notes "Capturas de la prueba de descargas en Android (solo para revisión)."
