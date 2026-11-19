@@ -13,6 +13,9 @@ on:
       - 'fastlane/**'
       - '.github/mi/preview.py'
       - '.github/workflows/mi-preview.yml'
+      - '.github/workflows/mi-pruebas.yml'
+      - '.github/mi/android_download_test.py'
+      - 'desktopApp/src/jvmTest/**'
 
 concurrency:
   group: mi-windows-nativo
