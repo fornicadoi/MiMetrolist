@@ -144,6 +144,7 @@ object AppUpdateManager {
         context: Context,
         networkEnabled: Boolean,
     ): GitHubRelease? {
+        if (!BuildConfig.UPDATER_ENABLED) return null
         if (Settings.shared.updateCacheSource != CACHE_SOURCE) {
             Settings.shared.updateCacheSource = CACHE_SOURCE
             Settings.shared.lastUpdateCheckAttemptTimestamp = 0L
@@ -183,6 +184,7 @@ object AppUpdateManager {
     ): GitHubRelease? =
         withContext(Dispatchers.IO) {
             operationMutex.withLock {
+                if (!BuildConfig.UPDATER_ENABLED) return@withLock null
                 when (val active = mutableState.value) {
                     is AppUpdateState.Downloading -> {
                         return@withLock active.release

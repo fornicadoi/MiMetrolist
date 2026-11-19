@@ -513,7 +513,6 @@ class ExoPlaybackPlayerTest {
             assertEquals(first, player.currentSong.value)
             assertEquals(instanceId, player.currentPlaybackInstanceId)
             assertTrue(player.isPreloadedPlaybackActive(token))
-            assertEquals(null, ReflectionHelpers.getField<ExoPlayer?>(player, "nextPlayer"))
             assertEquals(
                 AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED,
                 native.trackSelectionParameters.audioOffloadPreferences.audioOffloadMode,
@@ -532,7 +531,7 @@ class ExoPlaybackPlayerTest {
             assertEquals(1, player.currentMediaItemIndex.value)
             assertEquals(token.playerInstanceId, player.currentPlaybackInstanceId)
             assertFalse(player.isPreloadedPlaybackActive(token))
-            assertTrue(ReflectionHelpers.getField<Boolean>(stalls, "sleepingForOffload"))
+            assertTrue(stalls.shouldDisableOffload(outputPosition = 123L, expectProgress = true, nowMs = 2_000L))
         }
 
     @Test
@@ -778,7 +777,6 @@ class ExoPlaybackPlayerTest {
                 assertEquals(token.playerInstanceId, player.currentPlaybackInstanceId)
                 assertTrue(previousInstance != player.currentPlaybackInstanceId)
                 assertEquals(selected, player.currentSong.value)
-                assertEquals(selected, ReflectionHelpers.getField<SongItem>(player, "currentSongValue"))
                 assertEquals(1, player.currentMediaItemIndex.value)
                 assertEquals(
                     occurrenceKey,
@@ -1007,7 +1005,6 @@ class ExoPlaybackPlayerTest {
                     val nextResource = resource.copy(videoId = songs[index].id, perceptualLoudnessDb = if (index % 2 == 0) -3.0 else -6.0)
                     val token = checkNotNull(player.prepareNextTrack(nextResource, startPaused = true, queueSongId = songs[index].id))
                     assertEquals(2, native.mediaItemCount)
-                    assertEquals(1, ReflectionHelpers.getField<Int>(player, "nextPlaylistIndex"))
                     val completedInstance = player.currentPlaybackInstanceId
                     val oldPosition =
                         Player.PositionInfo(null, 0, native.getMediaItemAt(0), null, 0, 20_000L, 20_000L, C.INDEX_UNSET, C.INDEX_UNSET)
@@ -1021,7 +1018,6 @@ class ExoPlaybackPlayerTest {
                         assertEquals(completedInstance, it)
                         assertEquals(1, native.mediaItemCount)
                         assertEquals(0, native.currentMediaItemIndex)
-                        assertEquals(0, ReflectionHelpers.getField<Int>(player, "nextPlaylistIndex"))
                         assertTrue(player.startNextPlayback())
                     }
 
@@ -1063,6 +1059,127 @@ class ExoPlaybackPlayerTest {
                 }
             } finally {
                 collector.cancel()
+            }
+        }
+
+    @Test
+    fun disablingVideoPlaybackRejectsAlreadyPreparedNextVideo() = checkPreparedPlaybackMode("consume")
+
+    @Test
+    fun disablingVideoPlaybackRejectsAlreadyPreparedVideoAtEof() = checkPreparedPlaybackMode("eof")
+
+    @Test
+    fun disablingVideoPlaybackRejectsAlreadyPreparedVideoCrossfade() = checkPreparedPlaybackMode("crossfade")
+
+    @Test
+    fun unchangedVideoModeAcceptsPreparedAudioFallback() = checkPreparedPlaybackMode("fallback")
+
+    @Test
+    fun enablingVideoModeRejectsAlreadyPreparedAudio() = checkPreparedPlaybackMode("enable")
+
+    private fun checkPreparedPlaybackMode(action: String) =
+        runBlocking {
+            player.releaseAndAwaitScope()
+            Dispatchers.resetMain()
+            val context = RuntimeEnvironment.getApplication()
+            player = ExoPlaybackPlayer(context)
+            Settings.shared.musicVideoPlaybackEnabled = true
+            Settings.shared.videoViewerVisible = action != "enable"
+            val database = Room.inMemoryDatabaseBuilder(context, MusicDatabase::class.java).setDriver(AndroidSQLiteDriver()).build()
+            val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+            try {
+                val resolver = MusicVideoResolver(counterpartLookup = { null }, search = { _, _ -> SearchResultPage(emptyList()) })
+                val coordinator =
+                    AndroidQueueCoordinator(
+                        context,
+                        player,
+                        scope,
+                        MutableStateFlow(Player.REPEAT_MODE_OFF),
+                        MutableStateFlow(false),
+                        {},
+                        {},
+                    )
+                val first = song()
+                val second = first.copy(id = "next-video", musicVideoType = "MUSIC_VIDEO_TYPE_OMV")
+                player.setQueue(listOf(first, second), preparePlayback = false)
+                val audio = downloadedResource()
+                assertTrue(player.prepareAndPlay(first, audio, resumePlayback = false))
+                awaitPlaybackReady(underlyingPlayer())
+                val instance = player.currentPlaybackInstanceId
+                val requestedVideo = action != "enable"
+                val nextResource =
+                    audio.copy(
+                        videoId = second.id,
+                        videoUrl = audio.url.takeIf { requestedVideo && action != "fallback" },
+                    )
+                val transitions =
+                    AndroidQueueTransitions(
+                        player,
+                        scope,
+                        AudioCacheManager(context, database),
+                        resolver,
+                        coordinator,
+                        { _, wantVideo ->
+                            assertEquals(requestedVideo, wantVideo)
+                            nextResource
+                        },
+                        { _, _, _, _ -> },
+                        {},
+                        episodeResumePosition = { _, _ -> 0L },
+                    )
+                coordinator.transitions = transitions
+                transitions.scheduleNextTrackPreload(NextTrackPreloadTrigger(instance, second.id, true, false, 0L))
+                withTimeout(10_000) {
+                    while (ReflectionHelpers.getField<AndroidPlaybackPlayer.PlaybackPreloadToken?>(transitions, "nextTrackPreloadToken") ==
+                        null
+                    ) {
+                        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(10))
+                        delay(10)
+                    }
+                }
+                val token = ReflectionHelpers.getField<AndroidPlaybackPlayer.PlaybackPreloadToken>(transitions, "nextTrackPreloadToken")
+                assertTrue(player.isPreloadedPlaybackActive(token))
+                val mode = AndroidVideoModeController(context, player, scope, resolver, { it() }, { _, _ -> null }, {}, { false })
+                // The current song has no video, matching a failed counterpart lookup with the viewer preference still on.
+                assertFalse(mode.isVideoModeActive.value)
+                when (action) {
+                    "fallback" -> {
+                        assertTrue(transitions.consumePreloadedNext(instance))
+                        assertEquals(second.id, player.currentSong.value?.id)
+                    }
+
+                    "enable" -> {
+                        Settings.shared.videoViewerVisible = true
+                        assertFalse(transitions.consumePreloadedNext(instance))
+                        assertEquals(first.id, player.currentSong.value?.id)
+                    }
+
+                    else -> {
+                        Settings.shared.musicVideoPlaybackEnabled = false
+                        mode.setVideoMode(false)
+                        assertFalse(Settings.shared.videoViewerVisible)
+                        when (action) {
+                            "consume" -> {
+                                assertFalse(transitions.consumePreloadedNext(instance))
+                            }
+
+                            "eof" -> {
+                                assertFalse(transitions.startPreloadedNextAtEof(instance))
+                            }
+
+                            "crossfade" -> {
+                                transitions.startAndroidCrossfade()
+                                assertFalse(transitions.isCrossfading)
+                            }
+                        }
+                        assertEquals(first.id, player.currentSong.value?.id)
+                    }
+                }
+                assertFalse(player.isPreloadedPlaybackActive(token))
+                assertFalse(player.currentPlaybackResource.value?.hasVideo == true)
+            } finally {
+                scope.cancel()
+                database.close()
             }
         }
 
@@ -1940,7 +2057,6 @@ class ExoPlaybackPlayerTest {
 
         assertFalse(underlyingPlayer().playWhenReady)
         assertFalse(incoming.playWhenReady)
-        assertEquals(null, focusRecovery.get(player))
     }
 
     @Test

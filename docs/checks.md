@@ -33,6 +33,8 @@ Live YouTube tests are opt-in and never run in CI. See [InnerTube live tests](in
 
 ### Focus and navigation
 
+On desktop, enable Floating search and open it with Ctrl+K and the search bar. The popup and scrim must appear, and typing must work without another click. Dismiss with Escape, an outside click and submission, then reopen. Toggle Ctrl+K rapidly and verify navigation works after closing. Repeat on Linux JVM and native builds; an invisible popup must not intercept input.
+
 For keyboard and Android TV focus, traverse Home, Library, Search, album/artist/playlist pages, mini and full players, app bars, navigation bars/rails, chips, menus, settings and dialogs. Check both directions through carousel edges, nested card actions and player controls, then return from menus and the queue. Check light, dark, pure-black, dynamic and album-color backgrounds, including artwork behind controls. Focus outlines must remain visible without moving content; switching to touch must hide them. Verify press motion, marquee focus reveal, carousel snapping and player/queue focus recovery.
 
 On Android TV, in song and player menus, Radio and Add to playlist share the primary row with no Share action. Check full, landscape, tablet and fullscreen video players in Standard, Classic and Vintage. Cast and Share stay hidden, Like still works, and D-pad traversal skips removed controls. Repeat with Portuguese labels, lyrics, menus and the queue. Phones, tablets, Automotive, desktop and iOS keep their existing controls.
@@ -44,6 +46,8 @@ After Activity, Lifecycle, Navigation3 or Adaptive updates, verify cold starts, 
 In Settings > Appearance > Navigation and gestures, toggle Slim bottom navigation bar, Force bottom navigation bar, Floating navigation bar and each navigation tab. The page, scroll position and Back path must stay intact while the preferences apply. Repeat slim and forced-bottom changes in a wide Android layout, resize desktop between bottom navigation and sidebar layouts, and check slim and floating navigation on iOS. With floating navigation on iOS, check the bar clears the home indicator, each mini-player style sits above it, and content has no extra bottom gap with playback dismissed. Open a detail page and return, disable floating navigation, rotate the device and resize an iPad window into a rail layout. Check the bottom spacing follows the visible navigation and the setting persists after relaunch. Check that navigation fades, selected icons and settings page transitions animate.
 
 For Android lookahead crashes, repeat portrait/landscape rotation, background/resume and Wi-Fi/mobile/offline changes while playback starts and while the player is expanded or collapsed. Use floating, slim and standard navigation, cross the bar/rail window-size breakpoint, and toggle the navigation preferences from a scrolled settings page. Search, submit and go Back after each change. The page, scroll position and Back path must survive; bars keep their expand/shrink motion, icon transitions, shadows and spacing. Resize the desktop sidebar and verify its width animation. Repeat the shared navigation checks on iOS.
+
+For desktop startup and miniplayer changes, test a fresh profile through onboarding and relaunch an already-onboarded profile with the miniplayer hidden. Toggle the miniplayer from the tray, close and reopen it, switch focus mode, and hide/show the main window while the miniplayer remains responsive. Repeat on JVM and native builds; each window must provide its own theme after its window composition is established.
 
 ### Collections and pages
 
@@ -325,3 +329,21 @@ Preserve these rules when changing workflows:
 - Measure cache changes on hosted runners with cold and repeated warm runs. Local timings do not establish CI speedups.
 
 Arch verification restores the unprivileged builder's Gradle caches and wrapper from a separate OS, architecture and dependency-scoped cache. Only successful pushes to main save it. It does not persist the project configuration cache.
+
+When importing a custom playlist cover on Android 7/8 and Android 9+, select camera JPEGs with rotated and mirrored EXIF orientations. The saved cover should match the photo viewer orientation, remain at most 1024 pixels on either side, and keep its orientation after restarting. Also check an ordinary PNG.
+
+On Android, play a live broadcast and inspect media notifications and Android Auto. The session should report a live item without a seek bar or rewind/fast-forward commands, while Play/Pause and track navigation remain available. Switch to an ordinary track or an ended broadcast with a known duration and verify seeking returns. Repeat while casting.
+
+### Desktop direct-audio read ahead
+
+Play an uncached direct HTTP audio stream on a throttled connection that is faster than the encoded audio bitrate. Check continuous playback across range boundaries, then seek forwards and backwards, pause/resume, and switch tracks during a pending read. Repeat with a short file and a fully cached/downloaded track. Range requests stay bounded, obsolete requests stop when playback closes, and read ahead does not change the playback position. SABR playback and video range sizing remain unchanged.
+
+### Android TV root exit
+
+With Stop music on task clear enabled, confirm Back twice at the root on Android TV removes the task and stops active playback. With the setting disabled, playback should continue. Leaving a nested screen or closing the player must not exit; phone Back-exit behavior remains unchanged.
+
+For Android upgrades from v13, test a local playlist whose custom thumbnail still points to its own `FileProvider/cache/playlist_cover_crop_<timestamp>.jpg`. With surviving cache bytes, opening the library must copy the image into persistent playlist-cover storage, keep the original cache file, and preserve the recovered reference on a second open. Missing/unreadable files, other authorities, path traversal, remote playlists and newer custom covers must remain untouched. `LegacyPlaylistCoverRecoveryTest` covers these cases plus copy/database failure retries. This does not recover bytes already removed from the cache or make backup images portable.
+
+### Google Cast load replacement
+
+On a Google Cast receiver, replace a track while it is still buffering and confirm the replacement remains connected. A failure of the current load must still report a playback error rather than appearing to succeed. Repeat with rapid skips and normal end-of-track advancement.
