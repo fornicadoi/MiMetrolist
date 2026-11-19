@@ -167,7 +167,7 @@ object MioUnresolved {
                     }
                 val result =
                     try {
-                        manager.importVerbose(playlist.name, group.mapNotNull { it.match }, destination) { imported, _ ->
+                        manager.importVerbose(playlist.name, group.mapNotNull { it.match }, destination) { imported, _, _ ->
                             addingDone = (offset + imported).coerceAtMost(addingTotal)
                         }
                     } catch (error: CancellationException) {
