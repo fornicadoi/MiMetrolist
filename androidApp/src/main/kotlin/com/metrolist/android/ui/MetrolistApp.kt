@@ -171,6 +171,7 @@ import com.metrolist.android.deviceconnect.AndroidDeviceConnect
 import com.metrolist.android.extensions.findActivity
 import com.metrolist.android.listentogether.AndroidListenTogetherManager
 import com.metrolist.android.locale.AppLocale
+import com.metrolist.android.mio.MioFullScreenDialog
 import com.metrolist.android.mio.MioUpdateDialog
 import com.metrolist.android.playback.AndroidPlaybackController
 import com.metrolist.android.playback.ListenTogetherPlaybackRequest
@@ -1003,8 +1004,8 @@ fun MetrolistApp(
             val focusSong by playerConnection.currentSong.collectAsState()
             MioFocusHost(nowPlaying = focusSong?.title)
             MioLibraryTransferHost()
-            MioUnresolvedHost()
-            MioSyncHost()
+            MioUnresolvedHost(fullScreen = { onDismiss, content -> MioFullScreenDialog(onDismiss, content) })
+            MioSyncHost(fullScreen = { onDismiss, content -> MioFullScreenDialog(onDismiss, content) })
             LaunchedEffect(Unit) {
                 MioPlaylistSync.spotify = androidSpotifyImportManager
                 MioPlaylistSync.startAutoSync()

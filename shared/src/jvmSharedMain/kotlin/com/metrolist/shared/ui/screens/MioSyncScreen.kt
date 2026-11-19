@@ -4,7 +4,6 @@
 
 package com.metrolist.shared.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -81,12 +80,17 @@ import org.jetbrains.compose.resources.stringResource
 
 private val SyncGreen = Color(0xFF2FD66B)
 
-/** [inWindow] draws the review over the desktop window instead of in a dialog. */
+/** [inWindow] draws the review over the desktop window; [fullScreen] lets a platform supply an edge-to-edge container. */
 @Composable
-fun MioSyncHost(inWindow: Boolean = false) {
+fun MioSyncHost(
+    inWindow: Boolean = false,
+    fullScreen: (@Composable (onDismiss: () -> Unit, content: @Composable () -> Unit) -> Unit)? = null,
+) {
     if (!MioPlaylistSync.reviewOpen) return
     if (inWindow) {
         MioSyncContent()
+    } else if (fullScreen != null) {
+        fullScreen({ MioPlaylistSync.reviewOpen = false }) { MioSyncContent() }
     } else {
         Dialog(
             onDismissRequest = { MioPlaylistSync.reviewOpen = false },
@@ -104,68 +108,69 @@ private fun MioSyncContent() {
     LaunchedEffect(refresh, finished, MioPlaylistSync.checkingAll) {
         playlists = MioPlaylistSync.importedPlaylists()
     }
-    Box(
+    Surface(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .pointerInput(Unit) { detectTapGestures { } }
-            .safeDrawingPadding(),
-        contentAlignment = Alignment.TopCenter,
+            .pointerInput(Unit) { detectTapGestures { } },
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
     ) {
-        Column(Modifier.widthIn(max = 720.dp).fillMaxSize().padding(top = 40.dp)) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(Res.string.mio_sync_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        stringResource(Res.string.mio_sync_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = { MioPlaylistSync.reviewOpen = false }) {
-                    Icon(MetrolistIcons.Default.Close, stringResource(Res.string.mio_missing_close))
-                }
-            }
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(Res.string.mio_sync_auto), fontWeight = FontWeight.SemiBold)
-                    Text(
-                        stringResource(Res.string.mio_sync_auto_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(checked = Settings.shared.mioAutoSyncPlaylists, onCheckedChange = { Settings.shared.mioAutoSyncPlaylists = it })
-            }
-            val list = playlists
-            when {
-                list == null -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                list.isEmpty() ->
-                    Text(
-                        stringResource(Res.string.mio_sync_empty),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(20.dp),
-                    )
-                else ->
-                    LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
-                        items(list, key = { it.playlist.id }) { item ->
-                            SyncRow(item, MioPlaylistSync.status[item.playlist.id] ?: MioSyncStatus()) { refresh++ }
-                        }
+        Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
+            Column(Modifier.widthIn(max = 720.dp).fillMaxSize().padding(top = 16.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(Res.string.mio_sync_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            stringResource(Res.string.mio_sync_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-            }
-            if (!list.isNullOrEmpty()) {
-                Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.End) {
-                    Button(
-                        onClick = { MioPlaylistSync.checkAll() },
-                        enabled = !MioPlaylistSync.checkingAll,
-                        colors = ButtonDefaults.buttonColors(containerColor = SyncGreen, contentColor = Color.Black),
-                    ) {
-                        if (MioPlaylistSync.checkingAll) {
-                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.Black)
-                            Spacer(Modifier.width(8.dp))
+                    IconButton(onClick = { MioPlaylistSync.reviewOpen = false }) {
+                        Icon(MetrolistIcons.Default.Close, stringResource(Res.string.mio_missing_close))
+                    }
+                }
+                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(Res.string.mio_sync_auto), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            stringResource(Res.string.mio_sync_auto_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = Settings.shared.mioAutoSyncPlaylists, onCheckedChange = { Settings.shared.mioAutoSyncPlaylists = it })
+                }
+                val list = playlists
+                when {
+                    list == null -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                    list.isEmpty() ->
+                        Text(
+                            stringResource(Res.string.mio_sync_empty),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(20.dp),
+                        )
+                    else ->
+                        LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+                            items(list, key = { it.playlist.id }) { item ->
+                                SyncRow(item, MioPlaylistSync.status[item.playlist.id] ?: MioSyncStatus()) { refresh++ }
+                            }
                         }
-                        Text(stringResource(Res.string.mio_sync_check_all), fontWeight = FontWeight.Bold)
+                }
+                if (!list.isNullOrEmpty()) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.End) {
+                        Button(
+                            onClick = { MioPlaylistSync.checkAll() },
+                            enabled = !MioPlaylistSync.checkingAll,
+                            colors = ButtonDefaults.buttonColors(containerColor = SyncGreen, contentColor = Color.Black),
+                        ) {
+                            if (MioPlaylistSync.checkingAll) {
+                                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.Black)
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(stringResource(Res.string.mio_sync_check_all), fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }

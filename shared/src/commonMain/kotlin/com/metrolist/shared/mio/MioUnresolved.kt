@@ -47,6 +47,8 @@ object MioUnresolved {
     var unseen by mutableStateOf(false)
     var open by mutableStateOf(false)
     var searchingAll by mutableStateOf(false)
+    var addingDone by mutableStateOf(0)
+    var addingTotal by mutableStateOf(0)
         private set
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -149,9 +151,12 @@ object MioUnresolved {
         if (ready.isEmpty()) return
         scope.launch {
             ready.forEach { song -> update(song.id) { it.copy(state = MioMissingState.ADDING) } }
+            addingTotal = ready.size
+            addingDone = 0
             val database = KoinPlatform.getKoin().get<MusicDatabase>()
             val manager = PlaylistImportManager(database, GlobalYouTubeRepository.instance)
             var added = 0
+            var offset = 0
             ready.groupBy { it.playlist.id }.forEach { (_, group) ->
                 val playlist = group.first().playlist
                 val destination =
@@ -162,7 +167,9 @@ object MioUnresolved {
                     }
                 val result =
                     try {
-                        manager.importVerbose(playlist.name, group.mapNotNull { it.match }, destination)
+                        manager.importVerbose(playlist.name, group.mapNotNull { it.match }, destination) { imported, _ ->
+                            addingDone = (offset + imported).coerceAtMost(addingTotal)
+                        }
                     } catch (error: CancellationException) {
                         throw error
                     } catch (error: Exception) {
@@ -171,7 +178,10 @@ object MioUnresolved {
                 val ok = result.isSuccess || result.exceptionOrNull() is PlaylistImportManager.IncompleteImportException
                 group.forEach { song -> update(song.id) { it.copy(state = if (ok) MioMissingState.ADDED else MioMissingState.FOUND) } }
                 if (ok) added += group.size
+                offset += group.size
+                addingDone = offset
             }
+            addingTotal = 0
             if (added > 0) MioNotice.message = getString(Res.string.mio_missing_added, added)
         }
     }
