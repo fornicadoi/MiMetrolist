@@ -1,0 +1,121 @@
+name: Mi pruebas de descargas
+
+# Descarga una canción real en la versión de PC (Linux, mismo código que Windows) y en la APK
+# dentro de un emulador de Android. Si YouTube bloquea a los servidores de GitHub, el resultado
+# es "no se pudo comprobar" y no cuenta como fallo de la app.
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Mi APK]
+    types: [completed]
+
+concurrency:
+  group: mi-pruebas
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pc:
+    if: github.event.repository.fork && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Liberar espacio en disco
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+
+      - name: Descargar código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Preparar Gradle y JDK 25
+        uses: ./.github/actions/prepare-ci-gradle
+        with:
+          cache-scope: mi-pruebas-pc
+          persist-configuration-cache: 'false'
+
+      - name: Descargar una canción
+        env:
+          MIO_LIVE_DOWNLOAD: '1'
+          MIO_RESULT_FILE: ${{ runner.temp }}/pc/resultado.txt
+          XDG_DATA_HOME: ${{ runner.temp }}/pc/data
+          XDG_STATE_HOME: ${{ runner.temp }}/pc/state
+          XDG_CACHE_HOME: ${{ runner.temp }}/pc/cache
+          XDG_CONFIG_HOME: ${{ runner.temp }}/pc/config
+        run: ./gradlew :desktopApp:jvmTest --tests '*MioLiveDownloadTest' --rerun
+
+      - name: Resumen
+        if: always()
+        run: |
+          f="$RUNNER_TEMP/pc/resultado.txt"
+          { echo "## PC"; echo '```'; cat "$f" 2>/dev/null || echo "resultado=ERROR (la prueba no llegó a correr)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar resultado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prueba-pc
+          path: ${{ runner.temp }}/pc/resultado.txt
+          if-no-files-found: ignore
+
+  android:
+    if: github.event.repository.fork && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Descargar scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: .github/mi
+          persist-credentials: false
+
+      - name: Descargar la APK publicada
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download nightly -R "$GITHUB_REPOSITORY" -p MiMetrolist.apk -D "$RUNNER_TEMP"
+          aapt=$(ls "$ANDROID_HOME"/build-tools/*/aapt | sort -V | tail -1)
+          pkg=$("$aapt" dump badging "$RUNNER_TEMP/MiMetrolist.apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")
+          echo "PKG=$pkg" >> "$GITHUB_ENV"
+          echo "Paquete: $pkg"
+
+      - name: Activar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Probar en el emulador
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          ram-size: 4096M
+          disk-size: 6G
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            adb root || true
+            sleep 3
+            adb wait-for-device
+            adb install -r -g "$RUNNER_TEMP/MiMetrolist.apk"
+            python3 .github/mi/android_download_test.py "$PKG" "$RUNNER_TEMP/android"
+
+      - name: Resumen
+        if: always()
+        run: |
+          f="$RUNNER_TEMP/android/resultado.txt"
+          { echo "## Android"; echo '```'; cat "$f" 2>/dev/null || echo "resultado=ERROR (la prueba no llegó a correr)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar capturas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prueba-android
+          path: ${{ runner.temp }}/android
+          if-no-files-found: ignore
