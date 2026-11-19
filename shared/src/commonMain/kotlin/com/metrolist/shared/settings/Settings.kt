@@ -1149,7 +1149,8 @@ class Settings(
         val entries =
             backup.entries
                 .filterNot {
-                    it.key in excludedKeys || it.key in retiredPortableSettingTypes
+                    // MiMetrolist: settings from a newer Metrolist that this build does not know are skipped.
+                    it.key in excludedKeys || it.key in retiredPortableSettingTypes || it.key !in settingTypes
                 }.associateBy { it.key }
                 .toMutableMap()
         if ("keepScreenOnMode" !in entries) {
@@ -1206,7 +1207,9 @@ class Settings(
         val entries = backup.entries
         require(entries.map(PortableSetting::key).distinct().size == entries.size) { "Backup contains duplicate settings" }
         entries.forEach { entry ->
-            require((settingTypes[entry.key] ?: retiredPortableSettingTypes[entry.key]) == entry.type) {
+            // MiMetrolist: a backup from a newer Metrolist may carry settings this build does not have yet.
+            val knownType = settingTypes[entry.key] ?: retiredPortableSettingTypes[entry.key] ?: return@forEach
+            require(knownType == entry.type) {
                 "Invalid backup setting type for ${entry.key}"
             }
             if (entry.key == ArtistNameAliasesJsonKey) ArtistNameAliases.deserialize(entry.value)

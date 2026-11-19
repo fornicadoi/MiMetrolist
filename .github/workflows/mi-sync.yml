@@ -1,8 +1,8 @@
 name: Mi sincronización
 
-# Cada 3 horas revisa la nightly de MetrolistGroup/Metrolist (la etiqueta "nightly",
-# que también incluye todo lo de las versiones oficiales). Si cambió, aplica esos
-# cambios sobre MiMetrolist y compila una APK nueva.
+# Cada 3 horas revisa la nightly de MetrolistGroup/Metrolist y su última versión oficial,
+# y usa la más nueva de las dos. Si cambió, aplica esos cambios sobre MiMetrolist
+# y compila de nuevo el teléfono y las dos versiones de Windows.
 
 on:
   schedule:
@@ -37,14 +37,24 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           last=$(tr -d '[:space:]' < .github/mi/upstream-sha)
           git remote add upstream https://github.com/MetrolistGroup/Metrolist.git
-          git fetch --no-tags --depth=1 upstream +refs/tags/nightly:refs/upstream/nightly
+          # Sigue la nightly y también las versiones oficiales: usa la más nueva de las dos.
+          release_tag=$(gh api repos/MetrolistGroup/Metrolist/releases/latest --jq .tag_name 2>/dev/null || true)
+          git fetch --no-tags --depth=300 upstream +refs/tags/nightly:refs/upstream/nightly
           new=$(git rev-parse 'refs/upstream/nightly^{commit}')
-          if [ "$new" = "$last" ]; then
-            echo "La nightly de Metrolist no ha cambiado (${new::7})."
+          label="nightly"
+          if [ -n "$release_tag" ] && git fetch --no-tags --depth=300 upstream "+refs/tags/${release_tag}:refs/upstream/release"; then
+            release=$(git rev-parse 'refs/upstream/release^{commit}')
+            if [ "$release" != "$new" ] && git merge-base --is-ancestor "$new" "$release"; then
+              new="$release"
+              label="$release_tag"
+            fi
+          fi
+          git fetch --no-tags --depth=300 upstream "$last" || true
+          if [ "$new" = "$last" ] || git merge-base --is-ancestor "$new" "$last" 2>/dev/null; then
+            echo "Metrolist no tiene nada nuevo (${new::7})."
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git fetch --no-tags --depth=1 upstream "$last"
           # Los workflows de Metrolist no se usan en esta copia, así que se excluyen.
           git diff --binary "$last" "$new" -- . ':(exclude).github/workflows' > "$RUNNER_TEMP/upstream.patch"
           if [ -s "$RUNNER_TEMP/upstream.patch" ]; then
@@ -57,7 +67,7 @@ jobs:
           fi
           echo "$new" > .github/mi/upstream-sha
           git add .github/mi/upstream-sha
-          git commit -q -m "sync: Metrolist nightly ${new::7}"
+          git commit -q -m "sync: Metrolist ${label} ${new::7}"
           git push origin HEAD:${{ github.event.repository.default_branch }}
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
