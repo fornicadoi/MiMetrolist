@@ -151,7 +151,10 @@ def downloaded_files():
 
 
 def logcat_text():
-    return adb("logcat", "-d", "-t", "4000", timeout=120)
+    pids = adb("shell", "pidof", PACKAGE).split()
+    app = "".join(adb("logcat", "-d", f"--pid={pid}", timeout=120) for pid in pids)
+    (OUT / "logcat-app.txt").write_text(app)
+    return adb("logcat", "-d", timeout=120)
 
 
 def finish(outcome, detail):
@@ -159,6 +162,9 @@ def finish(outcome, detail):
     (OUT / "logcat.txt").write_text(log)
     if outcome == "ERROR" and any(h in log.lower() for h in BLOCK_HINTS):
         outcome = "BLOQUEO"
+    app_log = (OUT / "logcat-app.txt").read_text() if (OUT / "logcat-app.txt").exists() else ""
+    interesting = [line[33:].strip() for line in app_log.splitlines() if " E " in line[:40] or "download" in line.lower() or "stream" in line.lower()]
+    report.extend(f"log={line[:300]}" for line in interesting[-30:])
     hints = sorted({h for h in BLOCK_HINTS if h in log.lower()})
     if hints:
         report.append("pistas=" + ", ".join(hints))
@@ -187,6 +193,7 @@ def main():
     if not vid:
         finish("ERROR", "No se encontró una canción para probar")
     report.append(f"cancion={title} https://music.youtube.com/watch?v={vid}")
+    adb("logcat", "-G", "16M")
     adb("logcat", "-c")
     adb("shell", "monkey", "-p", PACKAGE, "-c", "android.intent.category.LAUNCHER", "1")
     time.sleep(15)
@@ -233,6 +240,7 @@ def main():
             report.extend(f"archivo={line}" for line in files[:5])
             finish("OK", "La canción quedó descargada en la app")
         time.sleep(10)
+    report.append("archivos-app=" + adb("shell", f"find /data/data/{PACKAGE}/files -maxdepth 2 -type d").replace("\n", " "))
     snapshot("sin-archivo")
     finish("ERROR", "No apareció ningún archivo descargado en 4 minutos")
 

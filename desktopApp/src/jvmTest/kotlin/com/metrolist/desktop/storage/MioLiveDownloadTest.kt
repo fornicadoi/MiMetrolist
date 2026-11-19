@@ -59,7 +59,9 @@ class MioLiveDownloadTest {
         val report = File(System.getenv("MIO_RESULT_FILE") ?: "build/mio-download.txt").apply { parentFile?.mkdirs() }
         val captured = ByteArrayOutputStream()
         val originalOut = System.out
+        val originalErr = System.err
         System.setOut(PrintStream(Tee(originalOut, captured), true))
+        System.setErr(PrintStream(Tee(originalErr, captured), true))
         startKoin { modules(coreModule, sharedModule, composeStateModule) }
         // Same region setup as the app's startup in Main.kt.
         GlobalYouTube.applyContentRegion(
@@ -113,14 +115,15 @@ class MioLiveDownloadTest {
             lines += "detalle=${error::class.simpleName}: ${error.message}"
         } finally {
             System.setOut(originalOut)
+            System.setErr(originalErr)
             stopKoin()
         }
         if (outcome != "OK") {
             captured
                 .toString()
                 .lines()
-                .filter { line -> listOf("fail", "error", "exception", "denied", "http ").any { line.contains(it, ignoreCase = true) } }
-                .takeLast(20)
+                .filter { line -> listOf("fail", "error", "exception", "denied", "http ", "bot", "login", "unplayable", "playability", "status").any { line.contains(it, ignoreCase = true) } }
+                .takeLast(40)
                 .forEach { lines += "log=${it.take(400)}" }
         }
         if (outcome != "OK" && isYouTubeBlock(captured.toString() + lines.joinToString("\n"))) outcome = "BLOQUEO"
