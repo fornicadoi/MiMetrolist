@@ -161,9 +161,17 @@ import com.metrolist.shared.generated.resources.import_spotify_account_playlists
 import com.metrolist.shared.generated.resources.imported_playlist
 import com.metrolist.shared.generated.resources.liked_songs
 import com.metrolist.shared.generated.resources.local_playlist
+import com.metrolist.shared.generated.resources.mio_connect_app
+import com.metrolist.shared.generated.resources.mio_connect_app_desc
 import com.metrolist.shared.generated.resources.mio_import_incomplete
+import com.metrolist.shared.generated.resources.mio_link_import_desc
+import com.metrolist.shared.generated.resources.mio_link_import_hint
+import com.metrolist.shared.generated.resources.mio_link_import_prompt
+import com.metrolist.shared.generated.resources.mio_link_import_title
 import com.metrolist.shared.generated.resources.mio_missing_open
 import com.metrolist.shared.generated.resources.mio_missing_open_desc
+import com.metrolist.shared.generated.resources.mio_sync_open_desc
+import com.metrolist.shared.generated.resources.mio_sync_title
 import com.metrolist.shared.generated.resources.n_song
 import com.metrolist.shared.generated.resources.or_choose_existing_playlist
 import com.metrolist.shared.generated.resources.playlist
@@ -190,6 +198,7 @@ import com.metrolist.shared.generated.resources.unknown
 import com.metrolist.shared.generated.resources.youtube_music
 import com.metrolist.shared.mio.MioLibraryItemSaver
 import com.metrolist.shared.mio.MioPendingImport
+import com.metrolist.shared.mio.MioPlaylistSync
 import com.metrolist.shared.mio.MioUnresolved
 import com.metrolist.shared.playlistimport.AppleMusicPlaylistImporter
 import com.metrolist.shared.playlistimport.CsvColumnMapping
@@ -208,6 +217,7 @@ import com.metrolist.shared.ui.components.AlertDialog
 import com.metrolist.shared.ui.components.ExpressiveFilterChip
 import com.metrolist.shared.ui.components.PopupContent
 import com.metrolist.shared.ui.components.PopupVisibility
+import com.metrolist.shared.ui.icons.MetrolistIcons
 import com.metrolist.shared.ui.menu.CsvColumnMappingDialog
 import com.metrolist.shared.ui.navigation.navigationPopupSource
 import com.metrolist.shared.ui.tv.tvFocusHighlight
@@ -309,6 +319,7 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
         }
     val spotifyImportManager = androidSpotifyImportManager
     var mioSpotifyConnected by remember { mutableStateOf(spotifyImportManager.isAuthenticated) }
+    var mioShowConnectChooser by remember { mutableStateOf(false) }
     LaunchedEffect(spotifyImportManager) {
         withContext(Dispatchers.IO) { spotifyImportManager.restorePersistedSession() }
     }
@@ -1915,7 +1926,7 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
         SettingsSubScreenGroup(
             title = stringResource(Res.string.playlist_imports_title),
             items =
-                // MiMetrolist: songs left out of earlier imports can be searched again from here.
+                // MiMetrolist: only connected services are listed; the rest are behind "Conectar una app".
                 listOfNotNull(
                     MioUnresolved.songs.size.takeIf { it > 0 }?.let { count ->
                         SettingsSubScreenItem(
@@ -1924,123 +1935,107 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
                             onClick = { MioUnresolved.open = true },
                         )
                     },
-                ) +
-                // MiMetrolist: each service shows whether it is connected and has its own link import row.
-                mioProviderItems(
-                    name = stringResource(Res.string.import_provider_spotify),
-                    connected = mioSpotifyConnected,
-                    enabled = controlsEnabled,
-                    onOpenAccount = { loadSpotifyLibrary() },
-                    onConnect = { showSpotifyLogin = true },
-                    onDisconnect = {
-                        spotifyImportManager.logout()
-                        mioSpotifyConnected = false
-                    },
-                    onImportLink = {
-                        openLinkOrTextInput(
-                            titleRes = Res.string.import_provider_spotify,
-                            promptRes = Res.string.import_paste_spotify_link,
-                            hintRes = Res.string.import_paste_spotify_hint,
-                            onSubmit = ::handleLinkOrTextSubmitted,
+                    mioConnectedProviderItem(
+                        name = stringResource(Res.string.import_provider_spotify),
+                        enabled = controlsEnabled,
+                        onOpenAccount = { loadSpotifyLibrary() },
+                        onDisconnect = {
+                            spotifyImportManager.logout()
+                            mioSpotifyConnected = false
+                        },
+                    ).takeIf { mioSpotifyConnected },
+                    appleMusicUserToken?.let { token ->
+                        mioConnectedProviderItem(
+                            name = stringResource(Res.string.import_provider_apple_music),
+                            enabled = controlsEnabled,
+                            onOpenAccount = { loadAppleMusicLibrary(token) },
+                            onDisconnect = {
+                                appleMusicUserToken = null
+                                MioProviderSessions.appleMusicToken = null
+                            },
                         )
                     },
-                ) +
-                    mioProviderItems(
-                        name = stringResource(Res.string.import_provider_apple_music),
-                        connected = appleMusicUserToken != null,
-                        enabled = controlsEnabled,
-                        onOpenAccount = { appleMusicUserToken?.let(::loadAppleMusicLibrary) },
-                        onConnect = { showAppleMusicLogin = true },
-                        onDisconnect = {
-                            appleMusicUserToken = null
-                            MioProviderSessions.appleMusicToken = null
-                        },
-                        onImportLink = {
-                            openLinkOrTextInput(
-                                titleRes = Res.string.import_provider_apple_music,
-                                promptRes = Res.string.import_paste_apple_music_link,
-                                hintRes = Res.string.import_paste_apple_music_hint,
-                                onSubmit = ::handleLinkOrTextSubmitted,
-                            )
-                        },
-                    ) +
-                    listOf(
-                        SettingsSubScreenItem(
-                            title = stringResource(Res.string.import_provider_youtube),
-                            description = stringResource(Res.string.import_provider_youtube_desc),
+                    MioProviderSessions.deezerArl?.let { arl ->
+                        mioConnectedProviderItem(
+                            name = stringResource(Res.string.import_provider_deezer),
                             enabled = controlsEnabled,
-                            onClick = {
-                                openLinkOrTextInput(
-                                    titleRes = Res.string.import_provider_youtube,
-                                    promptRes = Res.string.import_paste_youtube_link,
-                                    hintRes = Res.string.import_paste_youtube_hint,
-                                    isMultiline = false,
-                                    onSubmit = ::handleLinkOrTextSubmitted,
-                                )
-                            },
-                        ),
-                    ) +
-                    mioProviderItems(
-                        name = stringResource(Res.string.import_provider_deezer),
-                        connected = MioProviderSessions.deezerArl != null,
-                        enabled = controlsEnabled,
-                        onOpenAccount = { MioProviderSessions.deezerArl?.let(::mioConnectDeezer) },
-                        onConnect = { showDeezerLogin = true },
-                        onDisconnect = { MioProviderSessions.deezerArl = null },
-                        onImportLink = {
-                            openLinkOrTextInput(
-                                titleRes = Res.string.import_provider_deezer,
-                                promptRes = Res.string.import_paste_deezer_link,
-                                hintRes = Res.string.import_paste_deezer_hint,
-                                onSubmit = ::handleLinkOrTextSubmitted,
-                            )
-                        },
-                    ) +
-                    mioProviderItems(
-                        name = stringResource(Res.string.import_provider_tidal),
-                        connected = MioProviderSessions.tidalSession != null,
-                        enabled = controlsEnabled,
-                        onOpenAccount = { MioProviderSessions.tidalSession?.let { (sid, uid) -> mioConnectTidal(sid, uid) } },
-                        onConnect = { showTidalLogin = true },
-                        onDisconnect = { MioProviderSessions.tidalSession = null },
-                        onImportLink = {
-                            openLinkOrTextInput(
-                                titleRes = Res.string.import_provider_tidal,
-                                promptRes = Res.string.import_paste_tidal_prompt,
-                                hintRes = Res.string.import_paste_tidal_hint,
-                                onSubmit = ::handleLinkOrTextSubmitted,
-                            )
-                        },
-                    ) +
-                    mioProviderItems(
-                        name = stringResource(Res.string.import_provider_amazon),
-                        connected = MioProviderSessions.amazonSession != null,
-                        enabled = controlsEnabled,
-                        onOpenAccount = {
-                            MioProviderSessions.amazonSession?.let { (cookies, host) -> mioConnectAmazon(cookies, host) }
-                        },
-                        onConnect = { showAmazonLogin = true },
-                        onDisconnect = { MioProviderSessions.amazonSession = null },
-                        onImportLink = {
-                            openLinkOrTextInput(
-                                titleRes = Res.string.import_provider_amazon,
-                                promptRes = Res.string.import_paste_amazon_prompt,
-                                hintRes = Res.string.import_paste_amazon_hint,
-                                onSubmit = ::handleLinkOrTextSubmitted,
-                            )
-                        },
-                    ) +
-                    listOf(
-                        SettingsSubScreenItem(
-                            title = stringResource(Res.string.import_provider_file),
-                            description = stringResource(Res.string.import_provider_file_desc),
+                            onOpenAccount = { mioConnectDeezer(arl) },
+                            onDisconnect = { MioProviderSessions.deezerArl = null },
+                        )
+                    },
+                    MioProviderSessions.tidalSession?.let { (sid, uid) ->
+                        mioConnectedProviderItem(
+                            name = stringResource(Res.string.import_provider_tidal),
                             enabled = controlsEnabled,
-                            onClick = {
-                                openPlaylistFile()
-                            },
-                        ),
+                            onOpenAccount = { mioConnectTidal(sid, uid) },
+                            onDisconnect = { MioProviderSessions.tidalSession = null },
+                        )
+                    },
+                    MioProviderSessions.amazonSession?.let { (cookies, host) ->
+                        mioConnectedProviderItem(
+                            name = stringResource(Res.string.import_provider_amazon),
+                            enabled = controlsEnabled,
+                            onOpenAccount = { mioConnectAmazon(cookies, host) },
+                            onDisconnect = { MioProviderSessions.amazonSession = null },
+                        )
+                    },
+                    SettingsSubScreenItem(
+                        title = stringResource(Res.string.mio_connect_app),
+                        description = stringResource(Res.string.mio_connect_app_desc),
+                        enabled = controlsEnabled,
+                        onClick = { mioShowConnectChooser = true },
+                    ).takeIf {
+                        !mioSpotifyConnected || appleMusicUserToken == null || MioProviderSessions.deezerArl == null ||
+                            MioProviderSessions.tidalSession == null || MioProviderSessions.amazonSession == null
+                    },
+                    SettingsSubScreenItem(
+                        title = stringResource(Res.string.mio_link_import_title),
+                        description = stringResource(Res.string.mio_link_import_desc),
+                        icon = MetrolistIcons.Outlined.Link,
+                        enabled = controlsEnabled,
+                        onClick = {
+                            openLinkOrTextInput(
+                                titleRes = Res.string.mio_link_import_title,
+                                promptRes = Res.string.mio_link_import_prompt,
+                                hintRes = Res.string.mio_link_import_hint,
+                                onSubmit = ::handleLinkOrTextSubmitted,
+                            )
+                        },
                     ),
+                    SettingsSubScreenItem(
+                        title = stringResource(Res.string.mio_sync_title),
+                        description = stringResource(Res.string.mio_sync_open_desc),
+                        enabled = controlsEnabled,
+                        onClick = { MioPlaylistSync.reviewOpen = true },
+                    ),
+                    SettingsSubScreenItem(
+                        title = stringResource(Res.string.import_provider_file),
+                        description = stringResource(Res.string.import_provider_file_desc),
+                        enabled = controlsEnabled,
+                        onClick = {
+                            openPlaylistFile()
+                        },
+                    ),
+                ),
         )
+
+        if (mioShowConnectChooser) {
+            MioConnectChooser(
+                options =
+                    listOfNotNull(
+                        (stringResource(Res.string.import_provider_spotify) to { showSpotifyLogin = true }).takeIf { !mioSpotifyConnected },
+                        (stringResource(Res.string.import_provider_apple_music) to { showAppleMusicLogin = true })
+                            .takeIf { appleMusicUserToken == null },
+                        (stringResource(Res.string.import_provider_deezer) to { showDeezerLogin = true })
+                            .takeIf { MioProviderSessions.deezerArl == null },
+                        (stringResource(Res.string.import_provider_tidal) to { showTidalLogin = true })
+                            .takeIf { MioProviderSessions.tidalSession == null },
+                        (stringResource(Res.string.import_provider_amazon) to { showAmazonLogin = true })
+                            .takeIf { MioProviderSessions.amazonSession == null },
+                    ),
+                onDismiss = { mioShowConnectChooser = false },
+            )
+        }
     }
 }
 

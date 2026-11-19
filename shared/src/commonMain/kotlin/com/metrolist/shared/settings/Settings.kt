@@ -363,6 +363,8 @@ class Settings(
     var mioFocusCalmMusic by preference(true)
     var mioFocusPauseOnBreak by preference(true)
     var mioGlobalHotkeys by preference(true)
+    var mioSyncLinks by preference("")
+    var mioAutoSyncPlaylists by preference(true)
 
     var appFont by preference(FontOption.SYSTEM)
     var androidCustomFontFile by preference(AndroidCustomFontFileKey, "")

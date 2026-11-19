@@ -56,13 +56,13 @@ object MioUnresolved {
     fun record(
         playlist: PlaylistEntity,
         tracks: List<PlaylistImportManager.CsvTrack>,
+        announce: Boolean = true,
     ) {
-        if (tracks.isEmpty()) return
         scope.launch {
-            // A new import of the same playlist replaces its earlier leftovers.
+            // A new import or check of the same playlist replaces its earlier leftovers.
             songs.removeAll { it.playlist.id == playlist.id && it.state != MioMissingState.ADDED }
             tracks.forEach { songs += MioMissingSong(nextId++, playlist, it) }
-            unseen = true
+            if (announce && tracks.isNotEmpty()) unseen = true
         }
     }
 

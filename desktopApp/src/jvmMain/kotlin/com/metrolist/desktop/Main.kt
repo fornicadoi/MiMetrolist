@@ -93,6 +93,7 @@ import com.metrolist.desktop.di.composeStateModule
 import com.metrolist.desktop.input.DesktopShortcutLayer
 import com.metrolist.desktop.input.MioGlobalHotkeys
 import com.metrolist.desktop.input.desktopScrollConfig
+import com.metrolist.desktop.spotifyimport.createMioSpotifyImportManager
 import com.metrolist.desktop.state.DesktopLocaleManager
 import com.metrolist.desktop.state.app.AppState
 import com.metrolist.desktop.state.app.DesktopNavigation
@@ -192,6 +193,7 @@ import com.metrolist.shared.generated.resources.youtube_session_expired_message
 import com.metrolist.shared.generated.resources.youtube_session_expired_title
 import com.metrolist.shared.mio.MioFocus
 import com.metrolist.shared.mio.MioPendingImport
+import com.metrolist.shared.mio.MioPlaylistSync
 import com.metrolist.shared.scrobble.ScrobbleSessions
 import com.metrolist.shared.settings.AppLayout
 import com.metrolist.shared.settings.LibraryFilterType
@@ -228,6 +230,7 @@ import com.metrolist.shared.ui.navigation.rememberNavigationState
 import com.metrolist.shared.ui.playback.LocalPlaybackController
 import com.metrolist.shared.ui.screens.MioFocusHost
 import com.metrolist.shared.ui.screens.MioLibraryTransferHost
+import com.metrolist.shared.ui.screens.MioSyncHost
 import com.metrolist.shared.ui.screens.MioUnresolvedHost
 import com.metrolist.shared.ui.screens.SupportPrompt
 import com.metrolist.shared.ui.settings.SettingsPageId
@@ -620,6 +623,7 @@ private fun WindowScope.AppContent(
             }
             MioFocusHost(nowPlaying = PlayerState.currentTrack?.title, inWindow = true)
             MioUnresolvedHost(inWindow = true)
+            MioSyncHost(inWindow = true)
             YouTubeSyncSnackbar(AppState.snackbarHostState)
             MioUpdateToast(Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 112.dp))
             val snackbarScheme = rememberUpdatedState(colorScheme)
@@ -639,6 +643,10 @@ private fun WindowScope.AppContent(
         // MiMetrolist: the floating panels inherit this window's theme.
         MioFloatingPanelWindows()
         MioLibraryTransferHost()
+        LaunchedEffect(Unit) {
+            MioPlaylistSync.spotify = createMioSpotifyImportManager()
+            MioPlaylistSync.startAutoSync()
+        }
         LaunchedEffect(Settings.shared.mioGlobalHotkeys) {
             MioGlobalHotkeys.update(Settings.shared.mioGlobalHotkeys)
         }

@@ -180,6 +180,7 @@ import com.metrolist.android.playback.SongDownloadManager
 import com.metrolist.android.playback.isRunnable
 import com.metrolist.android.playback.resolveIncomingPlaybackSong
 import com.metrolist.android.playback.voiceSearchRequest
+import com.metrolist.android.spotifyimport.androidSpotifyImportManager
 import com.metrolist.android.ui.component.BottomSheetMenu
 import com.metrolist.android.ui.component.FloatingTopAppBar
 import com.metrolist.android.ui.component.LocalMenuState
@@ -309,6 +310,7 @@ import com.metrolist.shared.generated.resources.youtube_session_expired_title
 import com.metrolist.shared.listentogether.parseListenTogetherInvitation
 import com.metrolist.shared.mio.MioFocus
 import com.metrolist.shared.mio.MioPendingImport
+import com.metrolist.shared.mio.MioPlaylistSync
 import com.metrolist.shared.model.ArtistTiny
 import com.metrolist.shared.model.BuiltinPlaylist
 import com.metrolist.shared.model.SearchFilter
@@ -381,6 +383,7 @@ import com.metrolist.shared.ui.player.PlayerScreen
 import com.metrolist.shared.ui.player.shouldShowMusicVideoSurface
 import com.metrolist.shared.ui.screens.MioFocusHost
 import com.metrolist.shared.ui.screens.MioLibraryTransferHost
+import com.metrolist.shared.ui.screens.MioSyncHost
 import com.metrolist.shared.ui.screens.MioUnresolvedHost
 import com.metrolist.shared.ui.screens.SupportPrompt
 import com.metrolist.shared.ui.screens.pageKey
@@ -1030,6 +1033,11 @@ fun MetrolistApp(
             MioFocusHost(nowPlaying = focusSong?.title)
             MioLibraryTransferHost()
             MioUnresolvedHost()
+            MioSyncHost()
+            LaunchedEffect(Unit) {
+                MioPlaylistSync.spotify = androidSpotifyImportManager
+                MioPlaylistSync.startAutoSync()
+            }
             if (MioProfileState.visible) {
                 MioProfilePanel(
                     accountName = authManager.accountName,

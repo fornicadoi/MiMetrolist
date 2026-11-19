@@ -4,6 +4,7 @@ import com.metrolist.shared.db.MusicDatabase
 import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.import_default_imported_playlist_title
 import com.metrolist.shared.generated.resources.import_source_text_file
+import com.metrolist.shared.mio.MioSyncLinks
 import com.metrolist.shared.mio.MioUnresolved
 import com.metrolist.shared.model.SongItem
 import kotlinx.coroutines.CancellationException
@@ -197,7 +198,7 @@ object UnifiedPlaylistImporter {
                                 (provider != ImportSourceType.AMAZON || AmazonMusicPlaylistImporter.canHandle(trimmed))
                         },
                 )
-            }
+            }.onSuccess { data -> data.provider?.let { MioSyncLinks.rememberSource(data.title, it, trimmed) } }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -318,8 +319,10 @@ object UnifiedPlaylistImporter {
                         throw error
                     }
                 }
-            // MiMetrolist: keep the songs that were not found so they can be searched again.
+            // MiMetrolist: keep the songs that were not found so they can be searched again,
+            // and remember the link the playlist came from so it can be kept up to date.
             MioUnresolved.record(finalResult.playlist, unresolvedTracks)
+            MioSyncLinks.onImported(finalResult.playlist, title)
             val destinationName =
                 when (destination) {
                     is PlaylistImportManager.Destination.EXISTING -> destination.playlist.name

@@ -5,6 +5,9 @@
 package com.metrolist.android.ui.screens.settings
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -14,75 +17,93 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.metrolist.shared.generated.resources.Res
+import com.metrolist.shared.generated.resources.mio_connect_app_title
+import com.metrolist.shared.generated.resources.mio_missing_close
 import com.metrolist.shared.generated.resources.mio_provider_connect
 import com.metrolist.shared.generated.resources.mio_provider_connected
 import com.metrolist.shared.generated.resources.mio_provider_connected_desc
 import com.metrolist.shared.generated.resources.mio_provider_disconnect
-import com.metrolist.shared.generated.resources.mio_provider_disconnected_desc
-import com.metrolist.shared.generated.resources.mio_provider_link_desc
-import com.metrolist.shared.generated.resources.mio_provider_link_title
 import com.metrolist.shared.ui.icons.MetrolistIcons
 import org.jetbrains.compose.resources.stringResource
 
 private val MioConnectedGreen = Color(0xFF2FD66B)
 
+/** Row for a connected service: tap to open its library, or sign out. */
 @Composable
-internal fun mioProviderItems(
+internal fun mioConnectedProviderItem(
     name: String,
-    connected: Boolean,
     enabled: Boolean,
     onOpenAccount: () -> Unit,
-    onConnect: () -> Unit,
     onDisconnect: () -> Unit,
-    onImportLink: () -> Unit,
-): List<SettingsSubScreenItem> =
-    listOf(
-        SettingsSubScreenItem(
-            title = name,
-            description =
-                stringResource(
-                    if (connected) Res.string.mio_provider_connected_desc else Res.string.mio_provider_disconnected_desc,
-                ),
-            enabled = enabled,
-            trailingContent = {
-                if (connected) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        MioStatusPill(stringResource(Res.string.mio_provider_connected), filled = true)
-                        IconButton(onClick = onDisconnect, enabled = enabled, modifier = Modifier.size(40.dp)) {
-                            Icon(
-                                MetrolistIcons.AutoMirrored.Outlined.Logout,
-                                contentDescription = stringResource(Res.string.mio_provider_disconnect),
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                } else {
-                    MioStatusPill(stringResource(Res.string.mio_provider_connect), filled = false)
+): SettingsSubScreenItem =
+    SettingsSubScreenItem(
+        title = name,
+        description = stringResource(Res.string.mio_provider_connected_desc),
+        enabled = enabled,
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MioStatusPill(stringResource(Res.string.mio_provider_connected), filled = true)
+                IconButton(onClick = onDisconnect, enabled = enabled, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        MetrolistIcons.AutoMirrored.Outlined.Logout,
+                        contentDescription = stringResource(Res.string.mio_provider_disconnect),
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-            },
-            onClick = if (connected) onOpenAccount else onConnect,
-        ),
-        SettingsSubScreenItem(
-            title = stringResource(Res.string.mio_provider_link_title, name),
-            description = stringResource(Res.string.mio_provider_link_desc),
-            icon = MetrolistIcons.Outlined.Link,
-            enabled = enabled,
-            onClick = onImportLink,
-        ),
+            }
+        },
+        onClick = onOpenAccount,
     )
+
+/** Lets the user pick which service to connect; only services not connected yet are offered. */
+@Composable
+internal fun MioConnectChooser(
+    options: List<Pair<String, () -> Unit>>,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.mio_connect_app_title)) },
+        text = {
+            Column {
+                options.forEach { (name, connect) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                onDismiss()
+                                connect()
+                            }.padding(horizontal = 8.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        MioStatusPill(stringResource(Res.string.mio_provider_connect), filled = false)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.mio_missing_close)) }
+        },
+    )
+}
 
 @Composable
 private fun MioStatusPill(

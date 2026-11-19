@@ -17,4 +17,8 @@ interface ImportTrackMatchDao {
 
     @Upsert
     suspend fun upsert(matches: List<ImportTrackMatch>)
+
+    // MiMetrolist: "playlistId<TAB>provider" for every playlist that came from an import.
+    @Query("SELECT DISTINCT playlistId || char(9) || provider FROM import_track_match")
+    suspend fun mioImportedPlaylistKeys(): List<String>
 }
