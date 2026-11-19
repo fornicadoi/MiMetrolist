@@ -178,6 +178,7 @@ import com.metrolist.shared.playlistimport.PlaylistImportStatusManager
 import com.metrolist.shared.playlistimport.UnifiedPlaylistImporter
 import com.metrolist.shared.playlistimport.UniversalPlaylistParser
 import com.metrolist.shared.playlistimport.readPlaylistText
+import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.state.GlobalYouTubeRepository
 import com.metrolist.shared.ui.components.AlertDialog
 import com.metrolist.shared.ui.components.Dialog
@@ -678,58 +679,86 @@ fun BackupRestoreSettingsScreen(colorScheme: ColorScheme) {
                 colorScheme = colorScheme,
                 searchKeywords = listOf("playlist", "import", "spotify", "apple music", "youtube", "deezer", "tidal", "amazon", "csv"),
                 items =
+                    // MiMetrolist: each service shows whether it is connected and has its own link import row.
+                    mioDesktopProviderItems(
+                        name = stringResource(Res.string.import_provider_spotify),
+                        connected = Settings.shared.spotifySession.isNotBlank(),
+                        onOpenAccount = { showSpotifyAccountFlow = true },
+                        onDisconnect = { Settings.shared.spotifySession = "" },
+                        onImportLink = {
+                            openLinkOrTextInput(
+                                titleRes = Res.string.import_provider_spotify,
+                                promptRes = Res.string.import_paste_spotify_link,
+                                hintRes = Res.string.import_paste_spotify_hint,
+                            ) { url -> handleLinkOrTextSubmitted(url) }
+                        },
+                    ) +
+                    mioDesktopProviderItems(
+                        name = stringResource(Res.string.import_provider_apple_music),
+                        connected = MioDesktopSessions.connected[ImportSourceType.APPLE_MUSIC] == true,
+                        onOpenAccount = { showAppleMusicAccountFlow = true },
+                        onDisconnect = { MioDesktopSessions.connected.remove(ImportSourceType.APPLE_MUSIC) },
+                        onImportLink = {
+                            openLinkOrTextInput(
+                                titleRes = Res.string.import_provider_apple_music,
+                                promptRes = Res.string.import_paste_apple_music_link,
+                                hintRes = Res.string.import_paste_apple_music_hint,
+                            ) { url -> handleLinkOrTextSubmitted(url) }
+                        },
+                    ) +
                     listOf(
-                        Material3SettingsItem(
-                            title = { Text(stringResource(Res.string.import_provider_spotify)) },
-                            description = { Text(stringResource(Res.string.import_provider_spotify_desc)) },
-                            onClick = {
-                                spotifyInputUrl = ""
-                                showSpotifyProviderDialog = true
-                            },
-                        ),
-                        Material3SettingsItem(
-                            title = { Text(stringResource(Res.string.import_provider_apple_music)) },
-                            description = { Text(stringResource(Res.string.import_provider_apple_music_desc)) },
-                            onClick = {
-                                appleMusicInputUrl = ""
-                                showAppleMusicProviderDialog = true
-                            },
-                        ),
-                        Material3SettingsItem(
-                            title = { Text(stringResource(Res.string.import_provider_youtube)) },
-                            description = { Text(stringResource(Res.string.import_provider_youtube_desc)) },
-                            onClick = {
-                                openLinkOrTextInput(
-                                    titleRes = Res.string.import_provider_youtube,
-                                    promptRes = Res.string.import_paste_youtube_link,
-                                    hintRes = Res.string.import_paste_youtube_hint,
-                                ) { url -> handleLinkOrTextSubmitted(url) }
-                            },
-                        ),
-                        Material3SettingsItem(
-                            title = { Text(stringResource(Res.string.import_provider_deezer)) },
-                            description = { Text(stringResource(Res.string.import_provider_deezer_desc)) },
-                            onClick = {
-                                deezerInputUrl = ""
-                                showDeezerProviderDialog = true
-                            },
-                        ),
-                        Material3SettingsItem(
-                            title = { Text(stringResource(Res.string.import_provider_tidal)) },
-                            description = { Text(stringResource(Res.string.import_provider_tidal_desc)) },
-                            onClick = {
-                                tidalInputUrl = ""
-                                showTidalProviderDialog = true
-                            },
-                        ),
-                        Material3SettingsItem(
-                            title = { Text(stringResource(Res.string.import_provider_amazon)) },
-                            description = { Text(stringResource(Res.string.import_provider_amazon_desc)) },
-                            onClick = {
-                                amazonInputUrl = ""
-                                showAmazonProviderDialog = true
-                            },
-                        ),
+                            Material3SettingsItem(
+                                title = { Text(stringResource(Res.string.import_provider_youtube)) },
+                                description = { Text(stringResource(Res.string.import_provider_youtube_desc)) },
+                                onClick = {
+                                    openLinkOrTextInput(
+                                        titleRes = Res.string.import_provider_youtube,
+                                        promptRes = Res.string.import_paste_youtube_link,
+                                        hintRes = Res.string.import_paste_youtube_hint,
+                                    ) { url -> handleLinkOrTextSubmitted(url) }
+                                },
+                            ),
+                    ) +
+                    mioDesktopProviderItems(
+                        name = stringResource(Res.string.import_provider_deezer),
+                        connected = MioDesktopSessions.connected[ImportSourceType.DEEZER] == true,
+                        onOpenAccount = { showDeezerAccountFlow = true },
+                        onDisconnect = { MioDesktopSessions.connected.remove(ImportSourceType.DEEZER) },
+                        onImportLink = {
+                            openLinkOrTextInput(
+                                titleRes = Res.string.import_provider_deezer,
+                                promptRes = Res.string.import_paste_deezer_link,
+                                hintRes = Res.string.import_paste_deezer_hint,
+                            ) { url -> handleLinkOrTextSubmitted(url) }
+                        },
+                    ) +
+                    mioDesktopProviderItems(
+                        name = stringResource(Res.string.import_provider_tidal),
+                        connected = MioDesktopSessions.connected[ImportSourceType.TIDAL] == true,
+                        onOpenAccount = { showTidalAccountFlow = true },
+                        onDisconnect = { MioDesktopSessions.connected.remove(ImportSourceType.TIDAL) },
+                        onImportLink = {
+                            openLinkOrTextInput(
+                                titleRes = Res.string.import_provider_tidal,
+                                promptRes = Res.string.import_paste_tidal_prompt,
+                                hintRes = Res.string.import_paste_tidal_hint,
+                            ) { url -> handleLinkOrTextSubmitted(url) }
+                        },
+                    ) +
+                    mioDesktopProviderItems(
+                        name = stringResource(Res.string.import_provider_amazon),
+                        connected = MioDesktopSessions.connected[ImportSourceType.AMAZON] == true,
+                        onOpenAccount = { showAmazonAccountFlow = true },
+                        onDisconnect = { MioDesktopSessions.connected.remove(ImportSourceType.AMAZON) },
+                        onImportLink = {
+                            openLinkOrTextInput(
+                                titleRes = Res.string.import_provider_amazon,
+                                promptRes = Res.string.import_paste_amazon_prompt,
+                                hintRes = Res.string.import_paste_amazon_hint,
+                            ) { url -> handleLinkOrTextSubmitted(url) }
+                        },
+                    ) +
+                    listOf(
                         Material3SettingsItem(
                             title = { Text(stringResource(Res.string.import_provider_file)) },
                             description = { Text(stringResource(Res.string.import_provider_file_desc)) },

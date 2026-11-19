@@ -1,5 +1,8 @@
 package com.metrolist.shared.spotifyimport
 
+import com.metrolist.shared.generated.resources.Res
+import com.metrolist.shared.generated.resources.mio_spotify_albums
+import com.metrolist.shared.generated.resources.mio_spotify_podcasts
 import com.metrolist.shared.network.hasHttpTransportFailureInCauseChain
 import com.metrolist.shared.playlistimport.ImportErrorKey
 import com.metrolist.shared.playlistimport.ImportException
@@ -18,6 +21,7 @@ import meow.nyx.spotlib.SpotifyException
 import meow.nyx.spotlib.SpotifySession
 import meow.nyx.spotlib.SpotifySessionExpiredException
 import meow.nyx.spotlib.TrackItem
+import org.jetbrains.compose.resources.getString
 import java.util.concurrent.atomic.AtomicBoolean
 
 class SpotifyImportManager(
@@ -75,8 +79,20 @@ class SpotifyImportManager(
 
     suspend fun loadPlaylists(): List<PlaylistMeta> =
         withAuthenticatedClient("Loading playlists failed") { active ->
-            playlistsForImport(active.listPlaylists()).also { persistSessionIfCurrent(active) }
+            playlistsForImport(withLibraryGroups(active.listPlaylists(includeAlbumsAndPodcasts = true)))
+                .also { persistSessionIfCurrent(active) }
         }
+
+    // MiMetrolist: saved albums and podcasts are grouped under their own heading after the playlists.
+    private suspend fun withLibraryGroups(items: List<PlaylistMeta>): List<PlaylistMeta> {
+        val albums = getString(Res.string.mio_spotify_albums)
+        val podcasts = getString(Res.string.mio_spotify_podcasts)
+        val (extras, playlists) = items.partition { it.source == PlaylistSource.ALBUM || it.source == PlaylistSource.PODCAST }
+        return playlists +
+            extras
+                .sortedBy { it.source != PlaylistSource.ALBUM }
+                .map { it.copy(folderPath = listOf(if (it.source == PlaylistSource.ALBUM) albums else podcasts)) }
+    }
 
     suspend fun loadPlaylist(
         playlist: PlaylistMeta,
@@ -87,6 +103,10 @@ class SpotifyImportManager(
                 when (playlist.source) {
                     PlaylistSource.LIKED_SONGS -> {
                         active.likedSongs(MAX_IMPORT_TRACKS + 1, onProgress = onTrackProgress)
+                    }
+
+                    PlaylistSource.ALBUM, PlaylistSource.PODCAST -> {
+                        error("Saved albums and podcasts are imported by saving them, not as playlists")
                     }
 
                     PlaylistSource.PLAYLIST -> {

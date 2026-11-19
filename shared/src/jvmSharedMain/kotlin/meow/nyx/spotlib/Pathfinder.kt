@@ -37,6 +37,7 @@ internal data class LibraryPage(
     val folders: List<Pair<String, String>> = emptyList(),
     val likedSongs: PlaylistMeta? = null,
     val totalCount: Int = 0,
+    val albumsAndPodcasts: List<PlaylistMeta> = emptyList(),
 )
 
 internal fun parseLibraryPage(
@@ -47,6 +48,7 @@ internal fun parseLibraryPage(
     val playlists = ArrayList<PlaylistMeta>()
     val folders = ArrayList<Pair<String, String>>()
     var likedSongs: PlaylistMeta? = null
+    val albumsAndPodcasts = ArrayList<PlaylistMeta>()
 
     for (entry in library.array("items")) {
         val wrapper = (entry as? JsonObject)?.obj("item") ?: continue
@@ -80,6 +82,35 @@ internal fun parseLibraryPage(
                 )
             }
 
+            // MiMetrolist: saved albums and podcasts.
+            "AlbumResponseWrapper", "PodcastResponseWrapper" -> {
+                val album = type == "AlbumResponseWrapper"
+                albumsAndPodcasts.add(
+                    PlaylistMeta(
+                        uri = uri,
+                        name = name,
+                        owner =
+                            if (album) {
+                                data
+                                    ?.obj("artists")
+                                    ?.objects("items")
+                                    ?.mapNotNull { it.obj("profile")?.string("name") }
+                                    ?.joinToString(", ")
+                            } else {
+                                data?.obj("publisher")?.string("name")
+                            },
+                        image =
+                            data
+                                ?.obj("coverArt")
+                                ?.objects("sources")
+                                ?.firstOrNull()
+                                ?.string("url"),
+                        folderPath = folderPath,
+                        source = if (album) PlaylistSource.ALBUM else PlaylistSource.PODCAST,
+                    ),
+                )
+            }
+
             "LibraryPseudoPlaylistResponseWrapper" -> {
                 if (uri == "spotify:collection:tracks") {
                     likedSongs =
@@ -104,6 +135,7 @@ internal fun parseLibraryPage(
         folders,
         likedSongs,
         library["totalCount"]?.jsonPrimitive?.content?.toIntOrNull() ?: playlists.size,
+        albumsAndPodcasts,
     )
 }
 

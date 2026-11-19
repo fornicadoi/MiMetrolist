@@ -381,6 +381,7 @@ import com.metrolist.shared.ui.player.PlayerScreen
 import com.metrolist.shared.ui.player.shouldShowMusicVideoSurface
 import com.metrolist.shared.ui.screens.MioFocusHost
 import com.metrolist.shared.ui.screens.MioLibraryTransferHost
+import com.metrolist.shared.ui.screens.MioUnresolvedHost
 import com.metrolist.shared.ui.screens.SupportPrompt
 import com.metrolist.shared.ui.screens.pageKey
 import com.metrolist.shared.ui.screens.toHomeSection
@@ -1028,6 +1029,7 @@ fun MetrolistApp(
             val focusSong by playerConnection.currentSong.collectAsState()
             MioFocusHost(nowPlaying = focusSong?.title)
             MioLibraryTransferHost()
+            MioUnresolvedHost()
             if (MioProfileState.visible) {
                 MioProfilePanel(
                     accountName = authManager.accountName,

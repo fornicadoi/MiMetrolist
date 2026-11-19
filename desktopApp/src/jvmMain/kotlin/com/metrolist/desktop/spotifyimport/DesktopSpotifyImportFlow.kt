@@ -34,6 +34,7 @@ import com.metrolist.shared.generated.resources.spotify_import_imported_partial
 import com.metrolist.shared.generated.resources.spotify_import_loading_library
 import com.metrolist.shared.generated.resources.spotify_import_loading_playlists
 import com.metrolist.shared.generated.resources.spotify_import_skipped_playlists
+import com.metrolist.shared.mio.MioLibraryItemSaver
 import com.metrolist.shared.network.sharedHttpEngine
 import com.metrolist.shared.playlistimport.ImportErrorKey
 import com.metrolist.shared.playlistimport.ImportException
@@ -171,7 +172,12 @@ internal fun DesktopSpotifyImportFlow(
     }
 
     fun loadSelectedPlaylists() {
-        val selected = selectedUris.mapNotNull { uri -> spotifyPlaylists.firstOrNull { it.uri == uri } }
+        // MiMetrolist: saved albums and podcasts are saved on YouTube Music instead of imported as playlists.
+        val (savedItems, selected) =
+            selectedUris
+                .mapNotNull { uri -> spotifyPlaylists.firstOrNull { it.uri == uri } }
+                .partition(MioLibraryItemSaver::isSavedItem)
+        MioLibraryItemSaver.saveAll(savedItems)
         if (selected.isEmpty()) return
         operationJob =
             scope.launch {

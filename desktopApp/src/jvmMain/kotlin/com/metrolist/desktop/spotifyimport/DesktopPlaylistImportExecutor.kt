@@ -7,6 +7,7 @@ import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.favorites
 import com.metrolist.shared.generated.resources.import_error_resolution_failed
 import com.metrolist.shared.generated.resources.playlist_import_success
+import com.metrolist.shared.mio.MioUnresolved
 import com.metrolist.shared.playlistimport.ImportErrorKey
 import com.metrolist.shared.playlistimport.ImportException
 import com.metrolist.shared.playlistimport.ImportProgressState
@@ -119,6 +120,7 @@ internal class DesktopPlaylistImportExecutor(
                                 unresolvedTracks = UnifiedPlaylistImporter.unresolvedTracks(tracks, matches),
                             ),
                         )
+                        MioUnresolved.record(result.playlist, UnifiedPlaylistImporter.unresolvedTracks(tracks, matches))
                     } catch (error: CancellationException) {
                         PlaylistImportStatusManager.finishCancellation(statusId, error)
                         throw error
@@ -226,6 +228,7 @@ internal class DesktopPlaylistImportExecutor(
                         unresolvedTracks = UnifiedPlaylistImporter.unresolvedTracks(tracks, matches),
                     ),
                 )
+                MioUnresolved.record(result.playlist, UnifiedPlaylistImporter.unresolvedTracks(tracks, matches))
                 onStatus(
                     if (result.importedSongCount == 0) {
                         allAlreadyInDestination

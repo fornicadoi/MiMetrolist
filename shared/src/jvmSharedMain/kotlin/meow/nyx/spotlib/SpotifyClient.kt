@@ -179,8 +179,12 @@ class SpotifyClient internal constructor(
         return data
     }
 
-    suspend fun listPlaylists(includeLikedSongs: Boolean = true): List<PlaylistMeta> {
+    suspend fun listPlaylists(
+        includeLikedSongs: Boolean = true,
+        includeAlbumsAndPodcasts: Boolean = false,
+    ): List<PlaylistMeta> {
         val result = ArrayList<PlaylistMeta>()
+        val extras = ArrayList<PlaylistMeta>()
         var likedSongs: PlaylistMeta? = null
         val visitedFolders = HashSet<String>()
 
@@ -196,6 +200,7 @@ class SpotifyClient internal constructor(
                         path,
                     )
                 result.addAll(parsed.playlists)
+                extras.addAll(parsed.albumsAndPodcasts)
                 for ((uri, name) in parsed.folders) {
                     if (visitedFolders.add(uri)) collect(uri, path + name)
                 }
@@ -207,6 +212,7 @@ class SpotifyClient internal constructor(
 
         collect(null, emptyList())
         if (includeLikedSongs) likedSongs?.let { result.add(0, it) }
+        if (includeAlbumsAndPodcasts) result.addAll(extras)
         Log.info("Loaded ${result.size} Spotify playlists")
         return result
     }
@@ -278,6 +284,7 @@ class SpotifyClient internal constructor(
                     when (playlist.source) {
                         PlaylistSource.LIKED_SONGS -> likedSongs()
                         PlaylistSource.PLAYLIST -> playlistTracks(playlist.uri)
+                        PlaylistSource.ALBUM, PlaylistSource.PODCAST -> emptyList()
                     }
                 Log.info("Loaded ${tracks.size} tracks for an export playlist")
                 ExportedPlaylist(

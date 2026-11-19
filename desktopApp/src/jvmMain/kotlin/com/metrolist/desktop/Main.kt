@@ -228,6 +228,7 @@ import com.metrolist.shared.ui.navigation.rememberNavigationState
 import com.metrolist.shared.ui.playback.LocalPlaybackController
 import com.metrolist.shared.ui.screens.MioFocusHost
 import com.metrolist.shared.ui.screens.MioLibraryTransferHost
+import com.metrolist.shared.ui.screens.MioUnresolvedHost
 import com.metrolist.shared.ui.screens.SupportPrompt
 import com.metrolist.shared.ui.settings.SettingsPageId
 import com.metrolist.shared.ui.utils.LocalMouseScrollFactors
@@ -618,6 +619,7 @@ private fun WindowScope.AppContent(
                 SettingsOverlay(colorScheme)
             }
             MioFocusHost(nowPlaying = PlayerState.currentTrack?.title, inWindow = true)
+            MioUnresolvedHost(inWindow = true)
             YouTubeSyncSnackbar(AppState.snackbarHostState)
             MioUpdateToast(Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 112.dp))
             val snackbarScheme = rememberUpdatedState(colorScheme)

@@ -4,6 +4,7 @@ import com.metrolist.shared.db.MusicDatabase
 import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.import_default_imported_playlist_title
 import com.metrolist.shared.generated.resources.import_source_text_file
+import com.metrolist.shared.mio.MioUnresolved
 import com.metrolist.shared.model.SongItem
 import kotlinx.coroutines.CancellationException
 import org.jetbrains.compose.resources.getString
@@ -317,6 +318,8 @@ object UnifiedPlaylistImporter {
                         throw error
                     }
                 }
+            // MiMetrolist: keep the songs that were not found so they can be searched again.
+            MioUnresolved.record(finalResult.playlist, unresolvedTracks)
             val destinationName =
                 when (destination) {
                     is PlaylistImportManager.Destination.EXISTING -> destination.playlist.name

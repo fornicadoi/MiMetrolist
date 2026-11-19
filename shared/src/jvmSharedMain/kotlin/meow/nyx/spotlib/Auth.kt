@@ -1,5 +1,6 @@
 package meow.nyx.spotlib
 
+import com.metrolist.shared.network.TextResponse
 import io.ktor.client.request.headers
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -13,6 +14,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 private const val TOKEN_URL = "https://open.spotify.com/api/token"
@@ -45,15 +48,15 @@ internal class AuthHttp(
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun fetchAccessToken(): TokenResponse {
-        val code = Totp.code()
-        val url = "$TOKEN_URL?reason=init&productType=web-player&totp=$code&totpServer=$code&totpVer=${Totp.version()}"
-        val response =
-            http.get(url) {
-                headers {
-                    append(HttpHeaders.Accept, "*/*")
-                    append(HttpHeaders.Referrer, "https://open.spotify.com/")
-                }
+        var response = requestToken(System.currentTimeMillis())
+        // MiMetrolist: the code depends on the clock; a phone running a little early or late gets HTTP 400.
+        // Spotify's own Date header gives the time the code must match, so retry once with it.
+        if (response.status.value == 400) {
+            serverTimeMillis(response.headers[HttpHeaders.Date])?.let { serverNow ->
+                Log.info("Retrying the access token with Spotify's clock")
+                response = requestToken(serverNow)
             }
+        }
         if (response.status.value >= 400) {
             val message = "/api/token failed: HTTP ${response.status.value}"
             if (response.status.value == 401 || response.status.value == 403) {
@@ -74,6 +77,22 @@ internal class AuthHttp(
         Log.info("Access token exchange succeeded")
         return token
     }
+
+    private suspend fun requestToken(nowEpochMillis: Long): TextResponse {
+        val code = Totp.code(nowEpochMillis)
+        val url = "$TOKEN_URL?reason=init&productType=web-player&totp=$code&totpServer=$code&totpVer=${Totp.version()}"
+        return http.get(url) {
+            headers {
+                append(HttpHeaders.Accept, "*/*")
+                append(HttpHeaders.Referrer, "https://open.spotify.com/")
+            }
+        }
+    }
+
+    private fun serverTimeMillis(date: String?): Long? =
+        date?.let {
+            runCatching { ZonedDateTime.parse(it, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli() }.getOrNull()
+        }
 
     suspend fun fetchClientToken(): String {
         val deviceId = jar.cookieValue(Url(OPEN_HOST), "sp_t") ?: UUID.randomUUID().toString()

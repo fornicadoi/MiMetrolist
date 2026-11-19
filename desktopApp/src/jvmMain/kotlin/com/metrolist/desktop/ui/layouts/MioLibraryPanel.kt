@@ -38,8 +38,13 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.desktop.state.content.LibraryState
 import com.metrolist.desktop.state.content.PlaylistAlbumState
 import com.metrolist.shared.db.MusicDatabase
+import com.metrolist.shared.generated.resources.Res
+import com.metrolist.shared.generated.resources.mio_missing_open
+import com.metrolist.shared.generated.resources.mio_missing_open_desc
+import com.metrolist.shared.mio.MioUnresolved
 import com.metrolist.shared.ui.components.images.AsyncImage
 import com.metrolist.shared.ui.icons.MetrolistIcons
+import org.jetbrains.compose.resources.stringResource
 import org.koin.mp.KoinPlatform
 
 @Composable
@@ -53,6 +58,17 @@ internal fun MioLibraryPanel(modifier: Modifier = Modifier) {
             Text("Tu biblioteca", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+            val missing = MioUnresolved.songs.size
+            if (missing > 0) {
+                item(key = "missing") {
+                    PanelRow(
+                        title = stringResource(Res.string.mio_missing_open, missing),
+                        subtitle = stringResource(Res.string.mio_missing_open_desc),
+                        gradient = listOf(Color(0xFFDC2626), Color(0xFF7F1D1D)),
+                        icon = MetrolistIcons.Default.QuestionMark,
+                    ) { MioUnresolved.open = true }
+                }
+            }
             item(key = "liked") {
                 PanelRow(
                     title = "Tus me gusta",

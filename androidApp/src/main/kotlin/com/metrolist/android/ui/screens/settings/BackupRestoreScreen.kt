@@ -61,6 +61,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.sqlite.driver.AndroidSQLiteDriver
 import com.metrolist.android.R
 import com.metrolist.android.backup.BackupRestoreManager
+import com.metrolist.android.mio.MioProviderSessions
 import com.metrolist.android.playlistimport.AmazonMusicLoginScreen
 import com.metrolist.android.playlistimport.AndroidPlaylistImportTransfer
 import com.metrolist.android.playlistimport.AppleMusicLoginScreen
@@ -161,6 +162,8 @@ import com.metrolist.shared.generated.resources.imported_playlist
 import com.metrolist.shared.generated.resources.liked_songs
 import com.metrolist.shared.generated.resources.local_playlist
 import com.metrolist.shared.generated.resources.mio_import_incomplete
+import com.metrolist.shared.generated.resources.mio_missing_open
+import com.metrolist.shared.generated.resources.mio_missing_open_desc
 import com.metrolist.shared.generated.resources.n_song
 import com.metrolist.shared.generated.resources.or_choose_existing_playlist
 import com.metrolist.shared.generated.resources.playlist
@@ -185,7 +188,9 @@ import com.metrolist.shared.generated.resources.restore_stage_verifying_database
 import com.metrolist.shared.generated.resources.spotify_import_skipped_playlists
 import com.metrolist.shared.generated.resources.unknown
 import com.metrolist.shared.generated.resources.youtube_music
+import com.metrolist.shared.mio.MioLibraryItemSaver
 import com.metrolist.shared.mio.MioPendingImport
+import com.metrolist.shared.mio.MioUnresolved
 import com.metrolist.shared.playlistimport.AppleMusicPlaylistImporter
 import com.metrolist.shared.playlistimport.CsvColumnMapping
 import com.metrolist.shared.playlistimport.ImportErrorKey
@@ -303,6 +308,7 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
             PlaylistImportManager(database, GlobalYouTubeRepository.instance)
         }
     val spotifyImportManager = androidSpotifyImportManager
+    var mioSpotifyConnected by remember { mutableStateOf(spotifyImportManager.isAuthenticated) }
     LaunchedEffect(spotifyImportManager) {
         withContext(Dispatchers.IO) { spotifyImportManager.restorePersistedSession() }
     }
@@ -356,6 +362,9 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
     var spotifyAuthenticationError by remember { mutableStateOf<String?>(null) }
     var showSpotifyPlaylistPicker by remember { mutableStateOf(false) }
     var spotifyPlaylistMetas by remember { mutableStateOf<List<PlaylistMeta>?>(null) }
+    LaunchedEffect(showSpotifyLogin, showSpotifyPlaylistPicker, spotifyPlaylistMetas) {
+        mioSpotifyConnected = spotifyImportManager.isAuthenticated
+    }
     var selectedSpotifyPlaylistUris by remember { mutableStateOf(emptySet<String>()) }
     var showSpotifyPreviewSheet by remember { mutableStateOf(false) }
     var accountPlaylists by remember { mutableStateOf<AccountPlaylistPreparation?>(null) }
@@ -368,7 +377,7 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
     var showAppleMusicLogin by remember { mutableStateOf(false) }
     var isAppleMusicAuthenticating by remember { mutableStateOf(false) }
     var appleMusicAuthenticationError by remember { mutableStateOf<String?>(null) }
-    var appleMusicUserToken by remember { mutableStateOf<String?>(null) }
+    var appleMusicUserToken by remember { mutableStateOf(MioProviderSessions.appleMusicToken) }
     var showAppleMusicPlaylistPicker by remember { mutableStateOf(false) }
     var appleMusicPlaylistMetas by remember { mutableStateOf<List<PlaylistMeta>?>(null) }
     var selectedAppleMusicPlaylistUris by remember { mutableStateOf(emptySet<String>()) }
@@ -764,6 +773,7 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
                 PlaylistImportPreparationType.APPLE_PLAYLISTS -> {
                     val preparation = outcome.result.getOrThrow() as ApplePlaylistPreparation
                     appleMusicUserToken = preparation.token
+                    MioProviderSessions.appleMusicToken = preparation.token
                     if (appleMusicPlaylistMetas !== preparation.playlists) selectedAppleMusicPlaylistUris = emptySet()
                     appleMusicPlaylistMetas = preparation.playlists
                     showAppleMusicLogin = false
@@ -1350,7 +1360,11 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
                 onSelectionChange = { selectedSpotifyPlaylistUris = it },
                 onReview = {
                     showSpotifyPlaylistPicker = false
-                    val selectedMetas = metas.filter { it.uri in selectedSpotifyPlaylistUris }
+                    // MiMetrolist: saved albums and podcasts are saved on YouTube Music instead of imported as playlists.
+                    val (savedItems, selectedMetas) =
+                        metas.filter { it.uri in selectedSpotifyPlaylistUris }.partition(MioLibraryItemSaver::isSavedItem)
+                    MioLibraryItemSaver.saveAll(savedItems)
+                    if (selectedMetas.isEmpty()) return@SpotifyPlaylistPickerSheet
                     reportPreparationStartFailure(
                         AndroidPlaylistImportTransfer.prepareForeground(
                             context = context,
@@ -1630,50 +1644,55 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
         )
     }
 
+    fun mioConnectDeezer(arl: String) {
+        MioProviderSessions.deezerArl = arl
+        if (!isDeezerAuthenticating) {
+            isDeezerAuthenticating = true
+            deezerAuthenticationError = null
+            reportPreparationStartFailure(
+                AndroidPlaylistImportTransfer.prepareForeground(
+                    context = context,
+                    playlistTitle = deezerSource,
+                    source = deezerSource,
+                    type = PlaylistImportPreparationType.ACCOUNT_PLAYLISTS,
+                ) { _ ->
+                    val manager = DeezerImportManager()
+                    try {
+                        manager.authenticate(arl)
+                        val likedSongsName = getString(Res.string.liked_songs)
+                        val playlists = manager.loadPlaylists(likedSongsName = likedSongsName)
+                        AccountPlaylistPreparation(
+                            source = deezerSource,
+                            provider = ImportSourceType.DEEZER,
+                            playlists =
+                                playlists.map { playlist ->
+                                    AccountPlaylistChoice(playlist.id, playlist.name) { progress ->
+                                        manager.loadPlaylist(playlist, likedSongsName, progress)
+                                    }
+                                },
+                            onClose = manager::close,
+                        )
+                    } catch (error: Throwable) {
+                        manager.close()
+                        throw error
+                    }
+                },
+                showError = false,
+            ) { error ->
+                MioProviderSessions.deezerArl = null
+                showDeezerLogin = true
+                isDeezerAuthenticating = false
+                deezerAuthenticationError = resolveImportError(error)
+            }
+        }
+    }
+
     if (showDeezerLogin) {
         DeezerLoginScreen(
             isAuthenticating = isDeezerAuthenticating,
             authenticationError = deezerAuthenticationError,
             onClearAuthenticationError = { deezerAuthenticationError = null },
-            onSessionToken = { arl ->
-                if (!isDeezerAuthenticating) {
-                    isDeezerAuthenticating = true
-                    deezerAuthenticationError = null
-                    reportPreparationStartFailure(
-                        AndroidPlaylistImportTransfer.prepareForeground(
-                            context = context,
-                            playlistTitle = deezerSource,
-                            source = deezerSource,
-                            type = PlaylistImportPreparationType.ACCOUNT_PLAYLISTS,
-                        ) { _ ->
-                            val manager = DeezerImportManager()
-                            try {
-                                manager.authenticate(arl)
-                                val likedSongsName = getString(Res.string.liked_songs)
-                                val playlists = manager.loadPlaylists(likedSongsName = likedSongsName)
-                                AccountPlaylistPreparation(
-                                    source = deezerSource,
-                                    provider = ImportSourceType.DEEZER,
-                                    playlists =
-                                        playlists.map { playlist ->
-                                            AccountPlaylistChoice(playlist.id, playlist.name) { progress ->
-                                                manager.loadPlaylist(playlist, likedSongsName, progress)
-                                            }
-                                        },
-                                    onClose = manager::close,
-                                )
-                            } catch (error: Throwable) {
-                                manager.close()
-                                throw error
-                            }
-                        },
-                        showError = false,
-                    ) { error ->
-                        isDeezerAuthenticating = false
-                        deezerAuthenticationError = resolveImportError(error)
-                    }
-                }
-            },
+            onSessionToken = { arl -> mioConnectDeezer(arl) },
             onNavigateBack = {
                 showDeezerLogin = false
                 isDeezerAuthenticating = false
@@ -1700,50 +1719,55 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
         )
     }
 
+    fun mioConnectTidal(sid: String, uid: String) {
+        MioProviderSessions.tidalSession = sid to uid
+        if (!isTidalAuthenticating) {
+            isTidalAuthenticating = true
+            tidalAuthenticationError = null
+            reportPreparationStartFailure(
+                AndroidPlaylistImportTransfer.prepareForeground(
+                    context = context,
+                    playlistTitle = tidalSource,
+                    source = tidalSource,
+                    type = PlaylistImportPreparationType.ACCOUNT_PLAYLISTS,
+                ) { _ ->
+                    val manager = TidalImportManager()
+                    try {
+                        manager.authenticate(sid, uid)
+                        val likedSongsName = getString(Res.string.liked_songs)
+                        val playlists = manager.loadPlaylists(likedSongsName = likedSongsName)
+                        AccountPlaylistPreparation(
+                            source = tidalSource,
+                            provider = ImportSourceType.TIDAL,
+                            playlists =
+                                playlists.map { playlist ->
+                                    AccountPlaylistChoice(playlist.id, playlist.name) { progress ->
+                                        manager.loadPlaylist(playlist, likedSongsName, progress)
+                                    }
+                                },
+                            onClose = manager::close,
+                        )
+                    } catch (error: Throwable) {
+                        manager.close()
+                        throw error
+                    }
+                },
+                showError = false,
+            ) { error ->
+                MioProviderSessions.tidalSession = null
+                showTidalLogin = true
+                isTidalAuthenticating = false
+                tidalAuthenticationError = resolveImportError(error)
+            }
+        }
+    }
+
     if (showTidalLogin) {
         TidalLoginScreen(
             isAuthenticating = isTidalAuthenticating,
             authenticationError = tidalAuthenticationError,
             onClearAuthenticationError = { tidalAuthenticationError = null },
-            onSessionAuthenticated = { sid, uid ->
-                if (!isTidalAuthenticating) {
-                    isTidalAuthenticating = true
-                    tidalAuthenticationError = null
-                    reportPreparationStartFailure(
-                        AndroidPlaylistImportTransfer.prepareForeground(
-                            context = context,
-                            playlistTitle = tidalSource,
-                            source = tidalSource,
-                            type = PlaylistImportPreparationType.ACCOUNT_PLAYLISTS,
-                        ) { _ ->
-                            val manager = TidalImportManager()
-                            try {
-                                manager.authenticate(sid, uid)
-                                val likedSongsName = getString(Res.string.liked_songs)
-                                val playlists = manager.loadPlaylists(likedSongsName = likedSongsName)
-                                AccountPlaylistPreparation(
-                                    source = tidalSource,
-                                    provider = ImportSourceType.TIDAL,
-                                    playlists =
-                                        playlists.map { playlist ->
-                                            AccountPlaylistChoice(playlist.id, playlist.name) { progress ->
-                                                manager.loadPlaylist(playlist, likedSongsName, progress)
-                                            }
-                                        },
-                                    onClose = manager::close,
-                                )
-                            } catch (error: Throwable) {
-                                manager.close()
-                                throw error
-                            }
-                        },
-                        showError = false,
-                    ) { error ->
-                        isTidalAuthenticating = false
-                        tidalAuthenticationError = resolveImportError(error)
-                    }
-                }
-            },
+            onSessionAuthenticated = { sid, uid -> mioConnectTidal(sid, uid) },
             onNavigateBack = {
                 showTidalLogin = false
                 isTidalAuthenticating = false
@@ -1770,50 +1794,55 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
         )
     }
 
+    fun mioConnectAmazon(cookies: String, host: String) {
+        MioProviderSessions.amazonSession = cookies to host
+        if (!isAmazonAuthenticating) {
+            isAmazonAuthenticating = true
+            amazonAuthenticationError = null
+            reportPreparationStartFailure(
+                AndroidPlaylistImportTransfer.prepareForeground(
+                    context = context,
+                    playlistTitle = amazonSource,
+                    source = amazonSource,
+                    type = PlaylistImportPreparationType.ACCOUNT_PLAYLISTS,
+                ) { _ ->
+                    val manager = AmazonMusicImportManager()
+                    try {
+                        manager.authenticate(cookies, host)
+                        val likedSongsName = getString(Res.string.liked_songs)
+                        val playlists = manager.loadPlaylists(likedSongsName = likedSongsName)
+                        AccountPlaylistPreparation(
+                            source = amazonSource,
+                            provider = ImportSourceType.AMAZON,
+                            playlists =
+                                playlists.map { playlist ->
+                                    AccountPlaylistChoice(playlist.id, playlist.name) { progress ->
+                                        manager.loadPlaylist(playlist, likedSongsName, progress)
+                                    }
+                                },
+                            onClose = manager::close,
+                        )
+                    } catch (error: Throwable) {
+                        manager.close()
+                        throw error
+                    }
+                },
+                showError = false,
+            ) { error ->
+                MioProviderSessions.amazonSession = null
+                showAmazonLogin = true
+                isAmazonAuthenticating = false
+                amazonAuthenticationError = resolveImportError(error)
+            }
+        }
+    }
+
     if (showAmazonLogin) {
         AmazonMusicLoginScreen(
             isAuthenticating = isAmazonAuthenticating,
             authenticationError = amazonAuthenticationError,
             onClearAuthenticationError = { amazonAuthenticationError = null },
-            onSessionToken = { cookies, host ->
-                if (!isAmazonAuthenticating) {
-                    isAmazonAuthenticating = true
-                    amazonAuthenticationError = null
-                    reportPreparationStartFailure(
-                        AndroidPlaylistImportTransfer.prepareForeground(
-                            context = context,
-                            playlistTitle = amazonSource,
-                            source = amazonSource,
-                            type = PlaylistImportPreparationType.ACCOUNT_PLAYLISTS,
-                        ) { _ ->
-                            val manager = AmazonMusicImportManager()
-                            try {
-                                manager.authenticate(cookies, host)
-                                val likedSongsName = getString(Res.string.liked_songs)
-                                val playlists = manager.loadPlaylists(likedSongsName = likedSongsName)
-                                AccountPlaylistPreparation(
-                                    source = amazonSource,
-                                    provider = ImportSourceType.AMAZON,
-                                    playlists =
-                                        playlists.map { playlist ->
-                                            AccountPlaylistChoice(playlist.id, playlist.name) { progress ->
-                                                manager.loadPlaylist(playlist, likedSongsName, progress)
-                                            }
-                                        },
-                                    onClose = manager::close,
-                                )
-                            } catch (error: Throwable) {
-                                manager.close()
-                                throw error
-                            }
-                        },
-                        showError = false,
-                    ) { error ->
-                        isAmazonAuthenticating = false
-                        amazonAuthenticationError = resolveImportError(error)
-                    }
-                }
-            },
+            onSessionToken = { cookies, host -> mioConnectAmazon(cookies, host) },
             onNavigateBack = {
                 showAmazonLogin = false
                 isAmazonAuthenticating = false
@@ -1886,75 +1915,131 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
         SettingsSubScreenGroup(
             title = stringResource(Res.string.playlist_imports_title),
             items =
-                listOf(
-                    SettingsSubScreenItem(
-                        title = stringResource(Res.string.import_provider_spotify),
-                        description = stringResource(Res.string.import_provider_spotify_desc),
+                // MiMetrolist: songs left out of earlier imports can be searched again from here.
+                listOfNotNull(
+                    MioUnresolved.songs.size.takeIf { it > 0 }?.let { count ->
+                        SettingsSubScreenItem(
+                            title = stringResource(Res.string.mio_missing_open, count),
+                            description = stringResource(Res.string.mio_missing_open_desc),
+                            onClick = { MioUnresolved.open = true },
+                        )
+                    },
+                ) +
+                // MiMetrolist: each service shows whether it is connected and has its own link import row.
+                mioProviderItems(
+                    name = stringResource(Res.string.import_provider_spotify),
+                    connected = mioSpotifyConnected,
+                    enabled = controlsEnabled,
+                    onOpenAccount = { loadSpotifyLibrary() },
+                    onConnect = { showSpotifyLogin = true },
+                    onDisconnect = {
+                        spotifyImportManager.logout()
+                        mioSpotifyConnected = false
+                    },
+                    onImportLink = {
+                        openLinkOrTextInput(
+                            titleRes = Res.string.import_provider_spotify,
+                            promptRes = Res.string.import_paste_spotify_link,
+                            hintRes = Res.string.import_paste_spotify_hint,
+                            onSubmit = ::handleLinkOrTextSubmitted,
+                        )
+                    },
+                ) +
+                    mioProviderItems(
+                        name = stringResource(Res.string.import_provider_apple_music),
+                        connected = appleMusicUserToken != null,
                         enabled = controlsEnabled,
-                        onClick = {
-                            spotifyInputUrl = ""
-                            showSpotifyProviderDialog = true
+                        onOpenAccount = { appleMusicUserToken?.let(::loadAppleMusicLibrary) },
+                        onConnect = { showAppleMusicLogin = true },
+                        onDisconnect = {
+                            appleMusicUserToken = null
+                            MioProviderSessions.appleMusicToken = null
                         },
-                    ),
-                    SettingsSubScreenItem(
-                        title = stringResource(Res.string.import_provider_apple_music),
-                        description = stringResource(Res.string.import_provider_apple_music_desc),
-                        enabled = controlsEnabled,
-                        onClick = {
-                            appleMusicInputUrl = ""
-                            showAppleMusicProviderDialog = true
-                        },
-                    ),
-                    SettingsSubScreenItem(
-                        title = stringResource(Res.string.import_provider_youtube),
-                        description = stringResource(Res.string.import_provider_youtube_desc),
-                        enabled = controlsEnabled,
-                        onClick = {
+                        onImportLink = {
                             openLinkOrTextInput(
-                                titleRes = Res.string.import_provider_youtube,
-                                promptRes = Res.string.import_paste_youtube_link,
-                                hintRes = Res.string.import_paste_youtube_hint,
-                                isMultiline = false,
+                                titleRes = Res.string.import_provider_apple_music,
+                                promptRes = Res.string.import_paste_apple_music_link,
+                                hintRes = Res.string.import_paste_apple_music_hint,
                                 onSubmit = ::handleLinkOrTextSubmitted,
                             )
                         },
-                    ),
-                    SettingsSubScreenItem(
-                        title = stringResource(Res.string.import_provider_deezer),
-                        description = stringResource(Res.string.import_provider_deezer_desc),
+                    ) +
+                    listOf(
+                        SettingsSubScreenItem(
+                            title = stringResource(Res.string.import_provider_youtube),
+                            description = stringResource(Res.string.import_provider_youtube_desc),
+                            enabled = controlsEnabled,
+                            onClick = {
+                                openLinkOrTextInput(
+                                    titleRes = Res.string.import_provider_youtube,
+                                    promptRes = Res.string.import_paste_youtube_link,
+                                    hintRes = Res.string.import_paste_youtube_hint,
+                                    isMultiline = false,
+                                    onSubmit = ::handleLinkOrTextSubmitted,
+                                )
+                            },
+                        ),
+                    ) +
+                    mioProviderItems(
+                        name = stringResource(Res.string.import_provider_deezer),
+                        connected = MioProviderSessions.deezerArl != null,
                         enabled = controlsEnabled,
-                        onClick = {
-                            deezerInputUrl = ""
-                            showDeezerProviderDialog = true
+                        onOpenAccount = { MioProviderSessions.deezerArl?.let(::mioConnectDeezer) },
+                        onConnect = { showDeezerLogin = true },
+                        onDisconnect = { MioProviderSessions.deezerArl = null },
+                        onImportLink = {
+                            openLinkOrTextInput(
+                                titleRes = Res.string.import_provider_deezer,
+                                promptRes = Res.string.import_paste_deezer_link,
+                                hintRes = Res.string.import_paste_deezer_hint,
+                                onSubmit = ::handleLinkOrTextSubmitted,
+                            )
                         },
-                    ),
-                    SettingsSubScreenItem(
-                        title = stringResource(Res.string.import_provider_tidal),
-                        description = stringResource(Res.string.import_provider_tidal_desc),
+                    ) +
+                    mioProviderItems(
+                        name = stringResource(Res.string.import_provider_tidal),
+                        connected = MioProviderSessions.tidalSession != null,
                         enabled = controlsEnabled,
-                        onClick = {
-                            tidalInputUrl = ""
-                            showTidalProviderDialog = true
+                        onOpenAccount = { MioProviderSessions.tidalSession?.let { (sid, uid) -> mioConnectTidal(sid, uid) } },
+                        onConnect = { showTidalLogin = true },
+                        onDisconnect = { MioProviderSessions.tidalSession = null },
+                        onImportLink = {
+                            openLinkOrTextInput(
+                                titleRes = Res.string.import_provider_tidal,
+                                promptRes = Res.string.import_paste_tidal_prompt,
+                                hintRes = Res.string.import_paste_tidal_hint,
+                                onSubmit = ::handleLinkOrTextSubmitted,
+                            )
                         },
-                    ),
-                    SettingsSubScreenItem(
-                        title = stringResource(Res.string.import_provider_amazon),
-                        description = stringResource(Res.string.import_provider_amazon_desc),
+                    ) +
+                    mioProviderItems(
+                        name = stringResource(Res.string.import_provider_amazon),
+                        connected = MioProviderSessions.amazonSession != null,
                         enabled = controlsEnabled,
-                        onClick = {
-                            amazonInputUrl = ""
-                            showAmazonProviderDialog = true
+                        onOpenAccount = {
+                            MioProviderSessions.amazonSession?.let { (cookies, host) -> mioConnectAmazon(cookies, host) }
                         },
-                    ),
-                    SettingsSubScreenItem(
-                        title = stringResource(Res.string.import_provider_file),
-                        description = stringResource(Res.string.import_provider_file_desc),
-                        enabled = controlsEnabled,
-                        onClick = {
-                            openPlaylistFile()
+                        onConnect = { showAmazonLogin = true },
+                        onDisconnect = { MioProviderSessions.amazonSession = null },
+                        onImportLink = {
+                            openLinkOrTextInput(
+                                titleRes = Res.string.import_provider_amazon,
+                                promptRes = Res.string.import_paste_amazon_prompt,
+                                hintRes = Res.string.import_paste_amazon_hint,
+                                onSubmit = ::handleLinkOrTextSubmitted,
+                            )
                         },
+                    ) +
+                    listOf(
+                        SettingsSubScreenItem(
+                            title = stringResource(Res.string.import_provider_file),
+                            description = stringResource(Res.string.import_provider_file_desc),
+                            enabled = controlsEnabled,
+                            onClick = {
+                                openPlaylistFile()
+                            },
+                        ),
                     ),
-                ),
         )
     }
 }

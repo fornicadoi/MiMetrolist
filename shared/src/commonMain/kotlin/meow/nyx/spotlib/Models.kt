@@ -4,7 +4,8 @@ import kotlinx.serialization.Serializable
 import kotlin.time.Clock
 
 @Serializable
-enum class PlaylistSource { PLAYLIST, LIKED_SONGS }
+// MiMetrolist: ALBUM and PODCAST are saved library items, imported by saving them on YouTube Music.
+enum class PlaylistSource { PLAYLIST, LIKED_SONGS, ALBUM, PODCAST }
 
 @Serializable
 data class PlaylistMeta(
