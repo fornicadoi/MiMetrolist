@@ -35,6 +35,7 @@ import com.metrolist.shared.generated.resources.spotify_import_loading_library
 import com.metrolist.shared.generated.resources.spotify_import_loading_playlists
 import com.metrolist.shared.generated.resources.spotify_import_skipped_playlists
 import com.metrolist.shared.mio.MioLibraryItemSaver
+import com.metrolist.shared.mio.MioLikedFavorites
 import com.metrolist.shared.network.sharedHttpEngine
 import com.metrolist.shared.playlistimport.ImportErrorKey
 import com.metrolist.shared.playlistimport.ImportException
@@ -295,7 +296,12 @@ internal fun DesktopSpotifyImportFlow(
                 onContinue = {
                     if (previewPlaylists.size == 1) {
                         destinationName = previewPlaylists.single().name
-                        destination = if (AuthState.isSignedIn) Destination.NewSynced else Destination.NewLocal
+                        destination =
+                            when {
+                                MioLikedFavorites.goesToFavorites(previewPlaylists.single().uri) -> Destination.Favorites
+                                AuthState.isSignedIn -> Destination.NewSynced
+                                else -> Destination.NewLocal
+                            }
                         stage = SpotifyImportStage.DESTINATION
                     } else {
                         importExecutor.importBatch(previewPlaylists)

@@ -25,6 +25,8 @@ import com.metrolist.shared.db.MusicDatabase
 import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.blocked_artists_count
 import com.metrolist.shared.generated.resources.disliked_song
+import com.metrolist.shared.generated.resources.mio_move_song
+import com.metrolist.shared.generated.resources.mio_move_song_desc
 import com.metrolist.shared.generated.resources.refetch
 import com.metrolist.shared.generated.resources.refetch_desc
 import com.metrolist.shared.generated.resources.removed_dislike
@@ -82,6 +84,7 @@ fun SongMenu(
     trailingPrimaryActions: List<PlayerMenuAction> = emptyList(),
     showEditAction: Boolean = true,
     onHideFromLibrary: (() -> Unit)? = null,
+    onMove: (() -> Unit)? = null,
 ) {
     val suggestedToHostText = stringResource(Res.string.suggested_to_host)
 
@@ -202,6 +205,16 @@ fun SongMenu(
             trailingPrimaryActions = trailingPrimaryActions,
             additionalActions =
                 listOfNotNull(
+                    onMove?.let {
+                        PlayerMenuAction(
+                            MetrolistIcons.Outlined.DragIndicator,
+                            stringResource(Res.string.mio_move_song),
+                            stringResource(Res.string.mio_move_song_desc),
+                        ) {
+                            onDismiss()
+                            it()
+                        }
+                    },
                     onRefetch?.let {
                         PlayerMenuAction(
                             MetrolistIcons.Outlined.Refresh,

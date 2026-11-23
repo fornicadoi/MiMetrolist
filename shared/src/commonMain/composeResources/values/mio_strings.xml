@@ -197,4 +197,26 @@
     <string name="mio_update_now">Actualizar ahora</string>
     <string name="mio_notification_update_title">Nueva versión de MiMetrolist</string>
     <string name="mio_notification_update_text">Toca para ver las novedades y actualizar</string>
+    <string name="mio_library_reorder">Reordenar listas</string>
+    <string name="mio_library_reorder_done">Listo</string>
+    <string name="mio_library_reorder_hint">Mantén presionado el ícono ⋮⋮ de una lista y arrástrala, o tócalo para subirla o bajarla.</string>
+    <string name="mio_library_download_all">Descargar todas las listas</string>
+    <string name="mio_library_download_all_title">¿Descargar todas tus listas?</string>
+    <plurals name="mio_library_download_all_text">
+        <item quantity="one">Se descargará %1$d lista con todas sus canciones. Las canciones que agregues después también se descargarán.</item>
+        <item quantity="other">Se descargarán %1$d listas con todas sus canciones. Las canciones que agregues después también se descargarán.</item>
+    </plurals>
+    <string name="mio_library_download_all_none">Todas tus listas ya se están descargando.</string>
+    <string name="mio_library_download_all_started">Descargando tus listas. Puedes ver el avance en Descargas.</string>
+    <string name="mio_library_download_all_confirm">Descargar</string>
+    <string name="mio_move_song">Mover de posición</string>
+    <string name="mio_move_song_desc">Súbela o bájala dentro de esta lista</string>
+    <string name="mio_move_song_position">Posición %1$d de %2$d</string>
+    <string name="mio_move_song_to_top">Al inicio</string>
+    <string name="mio_move_song_up">Subir</string>
+    <string name="mio_move_song_down">Bajar</string>
+    <string name="mio_move_song_to_bottom">Al final</string>
+    <string name="mio_move_song_done">Listo</string>
+    <string name="mio_liked_to_favorites">Ponerlas en mis Favoritos</string>
+    <string name="mio_liked_to_favorites_desc">En vez de crear una lista aparte, se marcan como canciones que te gustan en MiMetrolist.</string>
 </resources>

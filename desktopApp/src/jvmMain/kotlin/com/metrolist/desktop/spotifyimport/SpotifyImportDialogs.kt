@@ -72,6 +72,8 @@ import com.metrolist.shared.generated.resources.spotify_import_selected_count
 import com.metrolist.shared.generated.resources.spotify_playlist_count
 import com.metrolist.shared.generated.resources.spotify_playlist_track_count
 import com.metrolist.shared.generated.resources.spotify_preview_summary
+import com.metrolist.shared.mio.MioLikedFavorites
+import com.metrolist.shared.mio.MioLikedToFavoritesSwitch
 import com.metrolist.shared.playlistimport.PlaylistImportManager.Destination
 import com.metrolist.shared.spotifyimport.SpotifyImportManager
 import com.metrolist.shared.ui.components.images.AsyncImage
@@ -159,56 +161,59 @@ internal fun SpotifyPlaylistPickerDialog(
                         items(playlists, key = PlaylistMeta::uri) { playlist ->
                             val selected = playlist.uri in selectedUris
                             val shape = RoundedCornerShape(14.dp)
-                            Surface(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clip(shape)
-                                        .toggleable(
-                                            value = selected,
-                                            role = Role.Checkbox,
-                                            onValueChange = {
-                                                onSelectionChange(
-                                                    if (selected) selectedUris - playlist.uri else selectedUris + playlist.uri,
-                                                )
-                                            },
-                                        ),
-                                shape = shape,
-                                color =
-                                    if (selected) {
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerLow
-                                    },
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                ) {
-                                    SpotifyArtwork(playlist.image, playlist.name)
-                                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        Text(
-                                            playlist.name,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                        Text(
-                                            listOfNotNull(
-                                                playlist.owner?.takeIf(String::isNotBlank),
-                                                playlist.trackCount.takeIf { it > 0 }?.let {
-                                                    pluralStringResource(Res.plurals.spotify_playlist_track_count, it, it)
+                            Column {
+                                Surface(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clip(shape)
+                                            .toggleable(
+                                                value = selected,
+                                                role = Role.Checkbox,
+                                                onValueChange = {
+                                                    onSelectionChange(
+                                                        if (selected) selectedUris - playlist.uri else selectedUris + playlist.uri,
+                                                    )
                                                 },
-                                            ).joinToString(" /\u00a0").ifBlank { stringResource(Res.string.spotify_import_playlist_label) },
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
+                                            ),
+                                    shape = shape,
+                                    color =
+                                        if (selected) {
+                                            MaterialTheme.colorScheme.secondaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainerLow
+                                        },
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                    ) {
+                                        SpotifyArtwork(playlist.image, playlist.name)
+                                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                            Text(
+                                                playlist.name,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                            Text(
+                                                listOfNotNull(
+                                                    playlist.owner?.takeIf(String::isNotBlank),
+                                                    playlist.trackCount.takeIf { it > 0 }?.let {
+                                                        pluralStringResource(Res.plurals.spotify_playlist_track_count, it, it)
+                                                    },
+                                                ).joinToString(" /\u00a0").ifBlank { stringResource(Res.string.spotify_import_playlist_label) },
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                        }
+                                        Checkbox(checked = selected, onCheckedChange = null)
                                     }
-                                    Checkbox(checked = selected, onCheckedChange = null)
                                 }
+                                if (playlist.uri == MioLikedFavorites.SPOTIFY_LIKED_SONGS_URI) MioLikedToFavoritesSwitch()
                             }
                         }
                     }

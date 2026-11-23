@@ -7,6 +7,7 @@ import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.favorites
 import com.metrolist.shared.generated.resources.import_error_resolution_failed
 import com.metrolist.shared.generated.resources.playlist_import_success
+import com.metrolist.shared.mio.MioLikedFavorites
 import com.metrolist.shared.mio.MioUnresolved
 import com.metrolist.shared.playlistimport.ImportErrorKey
 import com.metrolist.shared.playlistimport.ImportException
@@ -70,7 +71,12 @@ internal class DesktopPlaylistImportExecutor(
                                 )
                             }
                         // Signed-out batches have no YouTube Music account to create playlists in.
-                        val batchDestination = if (AuthState.isSignedIn) Destination.NewSynced else Destination.NewLocal
+                        val batchDestination =
+                            when {
+                                MioLikedFavorites.goesToFavorites(playlist.uri) -> Destination.Favorites
+                                AuthState.isSignedIn -> Destination.NewSynced
+                                else -> Destination.NewLocal
+                            }
                         val matches =
                             playlistManager.resolveImportTracks(
                                 tracks,

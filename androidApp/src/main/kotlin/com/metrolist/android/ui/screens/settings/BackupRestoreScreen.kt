@@ -197,6 +197,7 @@ import com.metrolist.shared.generated.resources.spotify_import_skipped_playlists
 import com.metrolist.shared.generated.resources.unknown
 import com.metrolist.shared.generated.resources.youtube_music
 import com.metrolist.shared.mio.MioLibraryItemSaver
+import com.metrolist.shared.mio.MioLikedFavorites
 import com.metrolist.shared.mio.MioPendingImport
 import com.metrolist.shared.mio.MioPlaylistSync
 import com.metrolist.shared.mio.MioUnresolved
@@ -1456,7 +1457,11 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
                         )
                     pendingImportData = data
                     AndroidPlaylistImportTransfer.replacePreparationResult(data)
-                    showDestinationPicker = true
+                    if (loaded.size == 1 && MioLikedFavorites.goesToFavorites(loaded.first().uri)) {
+                        startUnifiedImport(data, PlaylistImportManager.Destination.Favorites)
+                    } else {
+                        showDestinationPicker = true
+                    }
                 },
             )
         }

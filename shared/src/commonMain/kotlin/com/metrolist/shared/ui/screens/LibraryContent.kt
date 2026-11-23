@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
@@ -79,13 +80,23 @@ import com.metrolist.shared.constants.GridTileSpacing
 import com.metrolist.shared.constants.currentGridCells
 import com.metrolist.shared.constants.gridTileColumns
 import com.metrolist.shared.generated.resources.Res
+import com.metrolist.shared.generated.resources.cancel
 import com.metrolist.shared.generated.resources.display_density
 import com.metrolist.shared.generated.resources.filter_downloaded
 import com.metrolist.shared.generated.resources.library_load_failed
+import com.metrolist.shared.generated.resources.mio_library_download_all
+import com.metrolist.shared.generated.resources.mio_library_download_all_confirm
+import com.metrolist.shared.generated.resources.mio_library_download_all_none
+import com.metrolist.shared.generated.resources.mio_library_download_all_text
+import com.metrolist.shared.generated.resources.mio_library_download_all_title
+import com.metrolist.shared.generated.resources.mio_library_reorder
+import com.metrolist.shared.generated.resources.mio_library_reorder_done
+import com.metrolist.shared.generated.resources.mio_library_reorder_hint
 import com.metrolist.shared.generated.resources.playlist_direction_ascending
 import com.metrolist.shared.generated.resources.playlist_direction_descending
 import com.metrolist.shared.generated.resources.song_count
 import com.metrolist.shared.generated.resources.try_again
+import com.metrolist.shared.mio.MioLibraryDownloads
 import com.metrolist.shared.model.AlbumItem
 import com.metrolist.shared.model.ArtistItem
 import com.metrolist.shared.model.EpisodeItem
@@ -279,6 +290,8 @@ fun LibraryContent(
         }
     var reorderOrder by remember(manualOrder) { mutableStateOf(manualOrder) }
     val reorderEnabled = effectiveSortType == LibrarySortType.MANUAL && searchQuery.isBlank()
+    val downloadablePlaylistIds =
+        remember(items, autoPlaylists) { MioLibraryDownloads.playlistIds(items, autoPlaylists.any { it.type == "liked" }) }
     val presentationInput =
         remember(
             items,
@@ -460,6 +473,7 @@ fun LibraryContent(
                             onSearchToggle = toggleSearch,
                             onFilterChange = onFilterChange,
                             onGridViewChange = onGridViewChange,
+                            downloadablePlaylistIds = downloadablePlaylistIds,
                         )
                     }
                     if (onSearchQueryChange != null) {
@@ -641,9 +655,20 @@ private fun LibraryHeader(
     onSearchToggle: () -> Unit,
     onFilterChange: (LibraryFilter?) -> Unit,
     onGridViewChange: (Boolean) -> Unit,
+    downloadablePlaylistIds: List<String> = emptyList(),
 ) {
     if (Settings.shared.mioStyle) {
-        MioLibraryHeader(text, selectedFilter, isGridView, sortType, isSearchOpen, onSearchToggle, onFilterChange, onGridViewChange)
+        MioLibraryHeader(
+            text,
+            selectedFilter,
+            isGridView,
+            sortType,
+            isSearchOpen,
+            onSearchToggle,
+            onFilterChange,
+            onGridViewChange,
+            downloadablePlaylistIds,
+        )
         return
     }
     var sortExpanded by remember { mutableStateOf(false) }
@@ -1224,12 +1249,41 @@ private fun MioLibraryHeader(
     onSearchToggle: () -> Unit,
     onFilterChange: (LibraryFilter?) -> Unit,
     onGridViewChange: (Boolean) -> Unit,
+    downloadablePlaylistIds: List<String>,
 ) {
     var sortExpanded by remember { mutableStateOf(false) }
     var sortMenuOffset by remember { mutableStateOf(IntOffset.Zero) }
+    var confirmDownloadAll by remember { mutableStateOf<List<String>?>(null) }
     val sortingFilter = selectedFilter?.let { LibraryFilterType.valueOf(it.name) } ?: LibraryFilterType.ALL
     val sorting = Settings.shared.librarySorting(sortingFilter)
     val ascending = sorting.direction == SortDirection.ASCENDING
+    val reordering = sortType == LibrarySortType.MANUAL
+    confirmDownloadAll?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { confirmDownloadAll = null },
+            title = { Text(stringResource(Res.string.mio_library_download_all_title)) },
+            text = {
+                Text(
+                    if (pending.isEmpty()) {
+                        stringResource(Res.string.mio_library_download_all_none)
+                    } else {
+                        pluralStringResource(Res.plurals.mio_library_download_all_text, pending.size, pending.size)
+                    },
+                )
+            },
+            confirmButton = {
+                if (pending.isNotEmpty()) {
+                    TextButton(onClick = {
+                        MioLibraryDownloads.downloadAll(pending)
+                        confirmDownloadAll = null
+                    }) { Text(stringResource(Res.string.mio_library_download_all_confirm)) }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDownloadAll = null }) { Text(stringResource(Res.string.cancel)) }
+            },
+        )
+    }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         ChipShelf(
             options = LibraryFilter.entries.filterNot { it == LibraryFilter.PODCASTS && Settings.shared.hidePodcasts },
@@ -1289,6 +1343,41 @@ private fun MioLibraryHeader(
                 }
             }
             Spacer(Modifier.weight(1f))
+            if (LibrarySortType.MANUAL.isAvailableFor(selectedFilter)) {
+                IconButton(
+                    onClick = {
+                        if (reordering) {
+                            val previous =
+                                LibrarySortType.entries
+                                    .firstOrNull { it.name == Settings.shared.mioLibraryPreviousSort && it != LibrarySortType.MANUAL }
+                                    ?.takeIf { it.isAvailableFor(selectedFilter) }
+                                    ?: LibrarySortType.RECENTLY_ADDED
+                            Settings.shared.setLibrarySorting(
+                                sortingFilter,
+                                LibrarySorting(LibraryContentSort.valueOf(previous.name), previous.defaultDirection),
+                            )
+                        } else {
+                            Settings.shared.mioLibraryPreviousSort = sortType.name
+                            Settings.shared.setLibrarySorting(
+                                sortingFilter,
+                                LibrarySorting(LibraryContentSort.valueOf(LibrarySortType.MANUAL.name), LibrarySortType.MANUAL.defaultDirection),
+                            )
+                        }
+                    },
+                ) {
+                    Icon(
+                        if (reordering) MetrolistIcons.Default.Check else MetrolistIcons.Outlined.DragIndicator,
+                        contentDescription =
+                            stringResource(if (reordering) Res.string.mio_library_reorder_done else Res.string.mio_library_reorder),
+                        tint = if (reordering) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+            if (downloadablePlaylistIds.isNotEmpty()) {
+                IconButton(onClick = { confirmDownloadAll = MioLibraryDownloads.notDownloaded(downloadablePlaylistIds) }) {
+                    Icon(MetrolistIcons.Outlined.Download, contentDescription = stringResource(Res.string.mio_library_download_all))
+                }
+            }
             IconButton(onClick = onSearchToggle) {
                 Icon(
                     if (isSearchOpen) MetrolistIcons.Default.Close else MetrolistIcons.Default.Search,
@@ -1302,6 +1391,14 @@ private fun MioLibraryHeader(
                     contentDescription = if (isGridView) text.list else text.grid,
                 )
             }
+        }
+        if (reordering) {
+            Text(
+                stringResource(Res.string.mio_library_reorder_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+            )
         }
     }
 }

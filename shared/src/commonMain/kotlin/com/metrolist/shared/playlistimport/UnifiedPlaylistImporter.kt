@@ -43,6 +43,8 @@ data class ImportedPlaylistData(
     val sourcePlaylistCount: Int = 1,
     val sourceYouTubePlaylistId: String? = null,
     val coverUrl: String? = null,
+    /** MiMetrolist: import into Favorites instead of a new playlist (Spotify's Liked Songs, when chosen). */
+    val mioToFavorites: Boolean = false,
 )
 
 sealed interface ImportProgressState {

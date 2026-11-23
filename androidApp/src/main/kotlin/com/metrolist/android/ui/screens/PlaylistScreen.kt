@@ -73,6 +73,7 @@ import coil3.ImageLoader
 import coil3.request.ImageRequest
 import com.metrolist.android.LocalMiniPlayerBottomInset
 import com.metrolist.android.LocalPlaylistAdder
+import com.metrolist.android.mio.MioMoveSongSheet
 import com.metrolist.android.playback.LocalPlayerConnection
 import com.metrolist.android.playback.SongDownloadManager
 import com.metrolist.android.ui.component.AdaptiveModalBottomSheet
@@ -121,6 +122,7 @@ import com.metrolist.shared.generated.resources.suggestions
 import com.metrolist.shared.model.PlaylistPresentationOptions
 import com.metrolist.shared.model.PlaylistSongSort
 import com.metrolist.shared.model.SongItem
+import com.metrolist.shared.model.SortDirection
 import com.metrolist.shared.model.canEdit
 import com.metrolist.shared.model.filterForPlaylistSearch
 import com.metrolist.shared.model.indexOfPlaylistOccurrence
@@ -222,6 +224,7 @@ fun PlaylistScreen(
     val addToPlaylist = LocalPlaylistAdder.current
     var exportSongs by remember { mutableStateOf<List<SongItem>?>(null) }
     var selectedSongForMenu by remember { mutableStateOf<SongItem?>(null) }
+    var songToMove by remember { mutableStateOf<SongItem?>(null) }
     var showAddSongSheet by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -1151,7 +1154,41 @@ fun PlaylistScreen(
                 onGoToArtist = onArtistClick,
                 onRemove = if (isEditablePlaylist) ({ viewModel.removeSong(song) }) else null,
                 removeLabel = stringResource(Res.string.remove_from_playlist),
+                onMove =
+                    if (isEditablePlaylist) {
+                        {
+                            // MiMetrolist: moving only makes sense in the playlist's own order, so show that order.
+                            searchQuery = ""
+                            if (sortType != PlaylistSongSort.ORIGINAL || sortDirection != SortDirection.ASCENDING) {
+                                Settings.shared.setPlaylistSongSorting(
+                                    "playlist:$playlistId",
+                                    SavedPlaylistSongSorting(PlaylistSongSort.ORIGINAL, SortDirection.ASCENDING),
+                                )
+                            }
+                            if (page?.hasMore == true) viewModel.withAllSongs { songToMove = song } else songToMove = song
+                        }
+                    } else {
+                        null
+                    },
             )
+        }
+
+        songToMove?.let { moving ->
+            val position = songs.indexOfFirst { it === moving }
+            if (position < 0) {
+                LaunchedEffect(moving) { songToMove = null }
+            } else {
+                MioMoveSongSheet(
+                    title = moving.title,
+                    position = position,
+                    total = songs.size,
+                    onMove = { target ->
+                        viewModel.moveSong(position, target.coerceIn(0, songs.lastIndex))
+                        viewModel.commitPendingReorder()
+                    },
+                    onDismiss = { songToMove = null },
+                )
+            }
         }
     }
 }

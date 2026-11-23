@@ -199,7 +199,7 @@ object AndroidPlaylistImportTransfer {
                         manager = manager,
                         title = data.title,
                         tracks = data.tracks,
-                        destination = destination,
+                        destination = if (data.mioToFavorites) PlaylistImportManager.Destination.Favorites else destination,
                         provider = data.provider,
                         coverUrl = data.coverUrl,
                         onStateUpdate = onStateUpdate,

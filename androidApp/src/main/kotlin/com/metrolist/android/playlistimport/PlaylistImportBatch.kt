@@ -1,5 +1,6 @@
 package com.metrolist.android.playlistimport
 
+import com.metrolist.shared.mio.MioLikedFavorites
 import com.metrolist.shared.playlistimport.ImportProgressState
 import com.metrolist.shared.playlistimport.ImportSourceType
 import com.metrolist.shared.playlistimport.ImportedPlaylistData
@@ -24,6 +25,7 @@ internal fun preparePlaylistBatch(
             source = source,
             provider = provider,
             coverUrl = playlist.image,
+            mioToFavorites = MioLikedFavorites.goesToFavorites(playlist.uri),
         )
     }
 
