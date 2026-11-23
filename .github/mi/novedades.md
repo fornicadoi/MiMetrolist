@@ -1,0 +1,7 @@
+- Reordena tus listas en Biblioteca con el botón ⋮⋮ y guarda el orden con ✓
+- Mueve canciones dentro de tus listas desde sus tres puntitos: "Mover de posición"
+- Nuevo botón en Biblioteca para descargar todas tus listas de una vez
+- Al importar de Spotify, puedes mandar tus Me gusta a tus Favoritos en vez de crear una lista aparte
+- Sin internet, Inicio muestra solo lo que descargaste, con Reproducir todo y Aleatorio
+- Las portadas de canciones y listas descargadas se ven sin conexión
+- Arreglo: abrir la app sin internet ya no se queda en gris

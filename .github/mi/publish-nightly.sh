@@ -2,6 +2,7 @@
 # Sube un archivo a la versión "nightly" de MiMetrolist (la crea si no existe).
 # La app de Android y la de Windows buscan sus actualizaciones en esta versión.
 # Las notas listan los cambios desde la versión anterior, y la app las muestra como "Novedades".
+# Para escribirlas a mano, edita .github/mi/novedades.md en el mismo envío.
 set -euo pipefail
 file="$1"
 repo="$GITHUB_REPOSITORY"
@@ -27,7 +28,11 @@ if gh release view nightly -R "$repo" >/dev/null 2>&1; then
   if [ "$previous" != "$GITHUB_SHA" ]; then
     changes=""
     if [ -n "$previous" ] && git cat-file -e "${previous}^{commit}" 2>/dev/null; then
-      changes=$(changes_since "$previous")
+      # Si esta versión trae notas escritas a mano en novedades.md, se usan en lugar de la lista de cambios.
+      if ! git diff --quiet "$previous" HEAD -- .github/mi/novedades.md 2>/dev/null; then
+        changes=$(grep '^- ' .github/mi/novedades.md || true)
+      fi
+      [ -n "$changes" ] || changes=$(changes_since "$previous")
     fi
     [ -n "$changes" ] || changes="- Mejoras y arreglos"
     notes="## Novedades
