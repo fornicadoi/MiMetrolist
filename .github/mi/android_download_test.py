@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -156,6 +157,10 @@ def youtube_blocks_runner(vid):
     )
     try:
         status = json.loads(urllib.request.urlopen(request, timeout=30).read()).get("playabilityStatus", {})
+    except urllib.error.HTTPError as error:
+        report.append(f"youtube=sin respuesta ({error})")
+        # 403 y 429 son la forma en que YouTube rechaza a los servidores de GitHub.
+        return error.code in (403, 429)
     except Exception as error:
         report.append(f"youtube=sin respuesta ({error})")
         return False
