@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +32,7 @@ import com.metrolist.shared.generated.resources.mio_move_song_up
 import org.jetbrains.compose.resources.stringResource
 
 /** [position] is zero-based; the sheet stays open so the song can be moved several times. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MioMoveSongSheet(
     title: String,
