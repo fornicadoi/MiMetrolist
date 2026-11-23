@@ -108,13 +108,15 @@ jobs:
             sleep 3
             adb wait-for-device
             adb install -r -g "$RUNNER_TEMP/MiMetrolist.apk"
-            python3 .github/mi/android_download_test.py "$PKG" "$RUNNER_TEMP/android"
+            bash .github/mi/android_tests.sh "$PKG" "$RUNNER_TEMP"
 
       - name: Resumen
         if: always()
         run: |
           f="$RUNNER_TEMP/android/resultado.txt"
           cat "$f" 2>/dev/null || true
+          cat "$RUNNER_TEMP/android/sin-conexion/resultado.txt" 2>/dev/null || true
+          { echo "## Android sin conexión"; echo '```'; cat "$RUNNER_TEMP/android/sin-conexion/resultado.txt" 2>/dev/null || echo "resultado=ERROR (la prueba no llegó a correr)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           { echo "## Android"; echo '```'; cat "$f" 2>/dev/null || echo "resultado=ERROR (la prueba no llegó a correr)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publicar capturas

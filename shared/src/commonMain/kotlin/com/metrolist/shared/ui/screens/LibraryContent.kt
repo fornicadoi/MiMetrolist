@@ -289,7 +289,10 @@ fun LibraryContent(
             }
         }
     var reorderOrder by remember(manualOrder) { mutableStateOf(manualOrder) }
-    val reorderEnabled = effectiveSortType == LibrarySortType.MANUAL && searchQuery.isBlank()
+    // MiMetrolist: the order is shown in Manual sort, but items only move while editing with the header button.
+    val reorderEnabled =
+        effectiveSortType == LibrarySortType.MANUAL && searchQuery.isBlank() &&
+            (!Settings.shared.mioStyle || Settings.shared.mioLibraryReordering)
     val downloadablePlaylistIds =
         remember(items, autoPlaylists) { MioLibraryDownloads.playlistIds(items, autoPlaylists.any { it.type == "liked" }) }
     val presentationInput =
@@ -1257,7 +1260,7 @@ private fun MioLibraryHeader(
     val sortingFilter = selectedFilter?.let { LibraryFilterType.valueOf(it.name) } ?: LibraryFilterType.ALL
     val sorting = Settings.shared.librarySorting(sortingFilter)
     val ascending = sorting.direction == SortDirection.ASCENDING
-    val reordering = sortType == LibrarySortType.MANUAL
+    val reordering = sortType == LibrarySortType.MANUAL && Settings.shared.mioLibraryReordering
     confirmDownloadAll?.let { pending ->
         AlertDialog(
             onDismissRequest = { confirmDownloadAll = null },
@@ -1315,6 +1318,7 @@ private fun MioLibraryHeader(
                     selectedOption = sortType,
                     optionLabel = { text.sortLabels.getValue(it) },
                     onOptionSelected = { option ->
+                        Settings.shared.mioLibraryReordering = false
                         Settings.shared.setLibrarySorting(
                             sortingFilter,
                             LibrarySorting(LibraryContentSort.valueOf(option.name), option.defaultDirection),
@@ -1346,22 +1350,17 @@ private fun MioLibraryHeader(
             if (LibrarySortType.MANUAL.isAvailableFor(selectedFilter)) {
                 IconButton(
                     onClick = {
+                        // The check only ends editing; the library stays in the order that was just arranged.
                         if (reordering) {
-                            val previous =
-                                LibrarySortType.entries
-                                    .firstOrNull { it.name == Settings.shared.mioLibraryPreviousSort && it != LibrarySortType.MANUAL }
-                                    ?.takeIf { it.isAvailableFor(selectedFilter) }
-                                    ?: LibrarySortType.RECENTLY_ADDED
-                            Settings.shared.setLibrarySorting(
-                                sortingFilter,
-                                LibrarySorting(LibraryContentSort.valueOf(previous.name), previous.defaultDirection),
-                            )
+                            Settings.shared.mioLibraryReordering = false
                         } else {
-                            Settings.shared.mioLibraryPreviousSort = sortType.name
-                            Settings.shared.setLibrarySorting(
-                                sortingFilter,
-                                LibrarySorting(LibraryContentSort.valueOf(LibrarySortType.MANUAL.name), LibrarySortType.MANUAL.defaultDirection),
-                            )
+                            if (sortType != LibrarySortType.MANUAL) {
+                                Settings.shared.setLibrarySorting(
+                                    sortingFilter,
+                                    LibrarySorting(LibraryContentSort.valueOf(LibrarySortType.MANUAL.name), LibrarySortType.MANUAL.defaultDirection),
+                                )
+                            }
+                            Settings.shared.mioLibraryReordering = true
                         }
                     },
                 ) {

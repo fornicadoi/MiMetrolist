@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.metrolist.android.LocalMiniPlayerBottomInset
+import com.metrolist.android.LocalStartupPresentation
 import com.metrolist.android.playback.LocalPlayerConnection
 import com.metrolist.android.ui.component.tabContentTopPadding
 import com.metrolist.shared.db.MusicDatabase
@@ -111,6 +112,12 @@ fun MioOfflineHome(
             }.sortedBy { it.name.lowercase() }
     }
     val downloadedTitle = stringResource(Res.string.mio_offline_downloaded_songs)
+    // The startup splash waits for Home to appear; this screen stands in for Home while offline.
+    val startupPresentation = LocalStartupPresentation.current
+    LaunchedEffect(startupPresentation) {
+        startupPresentation?.homeLaidOut = true
+        startupPresentation?.homeCacheReady = true
+    }
 
     LazyColumn(
         modifier.fillMaxSize(),
