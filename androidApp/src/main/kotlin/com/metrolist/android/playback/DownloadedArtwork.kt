@@ -20,8 +20,9 @@ import java.io.File
 
 internal class DownloadedArtwork(
     private val context: Context,
+    directoryName: String = "downloaded-artwork",
 ) {
-    private val directory = File(context.filesDir, "downloaded-artwork")
+    private val directory = File(context.filesDir, directoryName)
 
     fun file(url: String): File {
         val current = keyedFile(canonicalArtworkUrl(url))

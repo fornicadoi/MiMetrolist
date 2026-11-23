@@ -19,6 +19,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.metrolist.android.MainActivity
 import com.metrolist.android.R
+import com.metrolist.android.mio.MioOfflineArtwork
 import com.metrolist.innertubex.extraction.ContentHints
 import com.metrolist.innertubex.extraction.StreamResolveException
 import com.metrolist.innertubex.sabr.SabrProtocolException
@@ -187,6 +188,7 @@ class SongDownloadManager(
         revision: Long,
     ): Int =
         withContext(Dispatchers.IO) {
+            MioOfflineArtwork.retainPlaylistCover(context, database, playlistId)
             val downloadedIds = audioCacheManager.downloadedIds(songs.map { it.id })
             val missing = pendingPlaylistDownloads(songs, downloadedIds)
             val added =

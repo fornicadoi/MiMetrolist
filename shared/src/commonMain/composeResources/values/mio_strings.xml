@@ -219,4 +219,16 @@
     <string name="mio_move_song_done">Listo</string>
     <string name="mio_liked_to_favorites">Ponerlas en mis Favoritos</string>
     <string name="mio_liked_to_favorites_desc">En vez de crear una lista aparte, se marcan como canciones que te gustan en MiMetrolist.</string>
+    <string name="mio_offline_title">Estás sin conexión</string>
+    <string name="mio_offline_text">Aquí está todo lo que descargaste. Cuando vuelva el internet, la app regresa sola a la normalidad.</string>
+    <string name="mio_offline_play_all">Reproducir todo</string>
+    <string name="mio_offline_shuffle">Aleatorio</string>
+    <string name="mio_offline_downloaded_songs">Canciones descargadas</string>
+    <plurals name="mio_offline_song_count">
+        <item quantity="one">%1$d canción</item>
+        <item quantity="other">%1$d canciones</item>
+    </plurals>
+    <string name="mio_offline_liked">Canciones que te gustan</string>
+    <string name="mio_offline_playlists">Listas descargadas</string>
+    <string name="mio_offline_empty">Todavía no tienes descargas. Cuando tengas internet, toca el botón de descarga en Biblioteca para guardar tus listas.</string>
 </resources>

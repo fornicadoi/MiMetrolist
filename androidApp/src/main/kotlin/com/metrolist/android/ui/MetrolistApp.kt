@@ -172,7 +172,9 @@ import com.metrolist.android.extensions.findActivity
 import com.metrolist.android.listentogether.AndroidListenTogetherManager
 import com.metrolist.android.locale.AppLocale
 import com.metrolist.android.mio.MioFullScreenDialog
+import com.metrolist.android.mio.MioOfflineHome
 import com.metrolist.android.mio.MioUpdateDialog
+import com.metrolist.android.mio.rememberMioOffline
 import com.metrolist.android.playback.AndroidPlaybackController
 import com.metrolist.android.playback.ListenTogetherPlaybackRequest
 import com.metrolist.android.playback.LocalPlayerConnection
@@ -2572,28 +2574,37 @@ fun getEntryProvider(
 ): (NavKey) -> NavEntry<NavKey> =
     entryProvider<NavKey> {
         entry<Screen.Home>(metadata = navTabMetadata) {
-            HomeScreen(
-                floatingActionsBottomInset = floatingActionsBottomInset,
-                onNavigateToAlbum = { albumId -> navigator.navigate(Screen.Album(albumId)) },
-                onNavigateToArtist = { artistId -> navigator.navigate(Screen.Artist(artistId)) },
-                onNavigateToPlaylist = { id, thumbnail -> navigator.navigate(Screen.Playlist(id, thumbnailHint = thumbnail)) },
-                onNavigateToPodcast = { podcastId -> navigator.navigate(Screen.Podcast(podcastId)) },
-                onNavigateToRecognition = { navigator.navigate(Screen.Recognition) },
-                onNavigateToLibrary = { filter ->
-                    filter?.let { Settings.shared.libraryFilter = it }
-                    navigator.navigate(Screen.Library)
-                },
-                onNavigateToBrowse = { browseId, params, title ->
-                    navigator.navigate(Screen.Browse(browseId, params, title))
-                },
-                onNavigateToVideoBrowse = { browseId, params, title ->
-                    navigator.navigate(Screen.Browse(browseId, params, title))
-                },
-                onNavigateToHomeSection = { shelf ->
-                    navigator.navigate(Screen.HomeSection(shelf.pageKey, shelf.title, shelf.toHomeSection()))
-                },
-                scrollToTopEvents = homeScrollToTopEvents,
-            )
+            // MiMetrolist: without a connection, Home shows only what is downloaded and loads nothing from the internet.
+            if (rememberMioOffline()) {
+                MioOfflineHome(
+                    onOpenPlaylist = { id -> navigator.navigate(Screen.Playlist(id)) },
+                    onOpenLiked = { navigator.navigate(Screen.AutoPlaylist("liked")) },
+                    onOpenDownloads = { navigator.navigate(Screen.AutoPlaylist("downloaded")) },
+                )
+            } else {
+                HomeScreen(
+                    floatingActionsBottomInset = floatingActionsBottomInset,
+                    onNavigateToAlbum = { albumId -> navigator.navigate(Screen.Album(albumId)) },
+                    onNavigateToArtist = { artistId -> navigator.navigate(Screen.Artist(artistId)) },
+                    onNavigateToPlaylist = { id, thumbnail -> navigator.navigate(Screen.Playlist(id, thumbnailHint = thumbnail)) },
+                    onNavigateToPodcast = { podcastId -> navigator.navigate(Screen.Podcast(podcastId)) },
+                    onNavigateToRecognition = { navigator.navigate(Screen.Recognition) },
+                    onNavigateToLibrary = { filter ->
+                        filter?.let { Settings.shared.libraryFilter = it }
+                        navigator.navigate(Screen.Library)
+                    },
+                    onNavigateToBrowse = { browseId, params, title ->
+                        navigator.navigate(Screen.Browse(browseId, params, title))
+                    },
+                    onNavigateToVideoBrowse = { browseId, params, title ->
+                        navigator.navigate(Screen.Browse(browseId, params, title))
+                    },
+                    onNavigateToHomeSection = { shelf ->
+                        navigator.navigate(Screen.HomeSection(shelf.pageKey, shelf.title, shelf.toHomeSection()))
+                    },
+                    scrollToTopEvents = homeScrollToTopEvents,
+                )
+            }
         }
 
         entry<Screen.EasterEgg>(metadata = navTabMetadata) {
