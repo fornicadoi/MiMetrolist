@@ -60,6 +60,7 @@ import com.metrolist.desktop.state.app.UiState
 import com.metrolist.desktop.state.playback.LyricsState
 import com.metrolist.desktop.state.playback.PlayerState
 import com.metrolist.desktop.ui.DesktopDensityProvider
+import com.metrolist.desktop.window.DesktopFrameWindowScope
 import com.metrolist.desktop.window.WindowVisibility
 import com.metrolist.desktop.window.WindowsMiniPlayerWindowFrame
 import com.metrolist.shared.api.lyrics.LyricsUtils
@@ -78,11 +79,14 @@ import com.metrolist.shared.ui.components.images.AsyncImage
 import com.metrolist.shared.ui.components.lyrics.rememberCaptionLyricsPositionState
 import com.metrolist.shared.ui.icons.MetrolistIcons
 import com.metrolist.shared.utils.OsUtil
+import dev.nucleusframework.window.tao.TaoWindow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.compose.resources.stringResource
 import java.awt.Cursor
 import java.awt.MouseInfo
+import java.awt.Window as AwtWindow
+import javax.swing.JFrame
 
 enum class MioPanelKind { QUEUE, LYRICS }
 
@@ -239,7 +243,20 @@ private fun MioFloatingPanelWindow(kind: MioPanelKind) {
         state = windowState,
         alwaysOnTop = Settings.shared.mioFloatOnTop,
     ) {
-        DesktopDensityProvider {
+        val frame = window
+        val desktopScope =
+            remember(frame) {
+                object : DesktopFrameWindowScope {
+                    override val awtWindow: AwtWindow = frame
+                    override val awtFrame: JFrame = frame
+                    override val taoWindow: TaoWindow? = null
+
+                    override fun requestFocus() {
+                        frame.requestFocus()
+                    }
+                }
+            }
+        desktopScope.DesktopDensityProvider {
             WindowVisibility(window) {
                 if (OsUtil.isWindows) {
                     WindowsMiniPlayerWindowFrame(
