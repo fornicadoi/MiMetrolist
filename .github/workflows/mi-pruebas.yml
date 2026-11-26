@@ -6,6 +6,10 @@ name: Mi pruebas de descargas
 
 on:
   workflow_dispatch:
+    inputs:
+      apk_run:
+        description: Número de la compilación de "Mi APK" a probar (vacío = la nightly publicada)
+        required: false
   workflow_run:
     workflows: [Mi APK]
     types: [completed]
@@ -17,6 +21,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   pc:
@@ -30,6 +35,7 @@ jobs:
       - name: Descargar código
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           submodules: recursive
           persist-credentials: false
 
@@ -67,6 +73,7 @@ jobs:
   android:
     permissions:
       contents: write
+      actions: read
     if: github.event.repository.fork && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -77,11 +84,17 @@ jobs:
           sparse-checkout: .github/mi
           persist-credentials: false
 
-      - name: Descargar la APK publicada
+      - name: Descargar la APK a probar
         env:
           GH_TOKEN: ${{ github.token }}
+          APK_RUN: ${{ github.event.workflow_run.id || inputs.apk_run }}
         run: |
-          gh release download nightly -R "$GITHUB_REPOSITORY" -p MiMetrolist.apk -D "$RUNNER_TEMP"
+          # La APK recién compilada (también la de ramas de prueba); si no hay, la nightly publicada.
+          if [ -n "$APK_RUN" ] && gh run download "$APK_RUN" -R "$GITHUB_REPOSITORY" -n MiMetrolist-apk -D "$RUNNER_TEMP"; then
+            echo "Probando la APK de la compilación $APK_RUN"
+          else
+            gh release download nightly -R "$GITHUB_REPOSITORY" -p MiMetrolist.apk -D "$RUNNER_TEMP" --clobber
+          fi
           aapt=$(ls "$ANDROID_HOME"/build-tools/*/aapt | sort -V | tail -1)
           pkg=$("$aapt" dump badging "$RUNNER_TEMP/MiMetrolist.apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")
           echo "PKG=$pkg" >> "$GITHUB_ENV"
