@@ -233,6 +233,7 @@ import com.metrolist.android.ui.screens.SearchScreen
 import com.metrolist.android.ui.screens.SettingsScreen
 import com.metrolist.android.ui.screens.settings.AndroidAboutScreen
 import com.metrolist.android.ui.screens.settings.AndroidAutoScreen
+import com.metrolist.android.ui.screens.settings.AndroidWrappedScreen
 import com.metrolist.android.ui.screens.settings.BackupRestoreScreen
 import com.metrolist.android.ui.screens.settings.DevtoolsSettingsScreen
 import com.metrolist.android.ui.screens.settings.ListenTogetherBlockedUsersScreen
@@ -406,6 +407,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -660,6 +662,14 @@ fun MetrolistApp(
             if (available == null) {
                 Settings.shared.updatePromptVersion = ""
                 Settings.shared.launchesSinceUpdatePrompt = 0
+            } else if (Settings.shared.autoInstallUpdates && AppUpdateManager.canInstallWithoutPrompt(context)) {
+                updateScope.launch {
+                    AppUpdateManager.autoInstall(
+                        context,
+                        available,
+                        playbackViewModel.playerConnection.playbackActive(),
+                    )
+                }
             } else if (Settings.shared.updatePromptVersion != available.updateKey) {
                 Settings.shared.updatePromptVersion = available.updateKey
                 Settings.shared.launchesSinceUpdatePrompt = 0
@@ -686,10 +696,31 @@ fun MetrolistApp(
         }
 
         LaunchedEffect(Unit) {
+            // Recreating the activity cancels a pending automatic install; resume it instead of waiting for the next check.
+            val pending =
+                when (val state = AppUpdateManager.state.value) {
+                    is AppUpdateState.Downloading -> state.release
+                    is AppUpdateState.Downloaded -> state.release
+                    else -> null
+                }
+            if (pending != null && AppUpdateManager.isBackgroundUpdate(pending)) {
+                updateScope.launch {
+                    AppUpdateManager.autoInstall(context, pending, playbackViewModel.playerConnection.playbackActive())
+                }
+            }
             // Hourly keeps nightly users current while staying far below GitHub's unauthenticated rate limit.
             while (true) {
                 delay(1.hours)
-                if (Settings.shared.checkForUpdates) AppUpdateManager.checkAtStartup(context, networkEnabled = true)
+                if (!Settings.shared.checkForUpdates) continue
+                AppUpdateManager.checkAtStartup(context, networkEnabled = true)?.let { release ->
+                    updateScope.launch {
+                        AppUpdateManager.autoInstall(
+                            context,
+                            release,
+                            playbackViewModel.playerConnection.playbackActive(),
+                        )
+                    }
+                }
             }
         }
 
@@ -1945,7 +1976,7 @@ fun MetrolistApp(
                                     .fillMaxSize()
                                     .drawWithContent {
                                         val bottomInset =
-                                            if (playerBottomSheetState.progress <= 0f) {
+                                            if (navigationConsumesSpace && playerBottomSheetState.progress <= 0f) {
                                                 navigationBottomInset.toPx()
                                             } else {
                                                 0f
@@ -2589,6 +2620,7 @@ fun getEntryProvider(
                     onNavigateToPlaylist = { id, thumbnail -> navigator.navigate(Screen.Playlist(id, thumbnailHint = thumbnail)) },
                     onNavigateToPodcast = { podcastId -> navigator.navigate(Screen.Podcast(podcastId)) },
                     onNavigateToRecognition = { navigator.navigate(Screen.Recognition) },
+                    onNavigateToWrapped = { navigator.navigate(Screen.Wrapped) },
                     onNavigateToLibrary = { filter ->
                         filter?.let { Settings.shared.libraryFilter = it }
                         navigator.navigate(Screen.Library)
@@ -2945,6 +2977,10 @@ fun getEntryProvider(
             )
         }
 
+        entry<Screen.Wrapped>(metadata = navTabMetadata) {
+            AndroidWrappedScreen(onBack = { navigator.goBack() })
+        }
+
         entry<Screen.StatisticsDetail>(metadata = navTabMetadata) { detail ->
             StatsDetailScreen(
                 detail = detail.detail,
@@ -3006,3 +3042,7 @@ private fun NavigationContentProvider(
 }
 
 val LocalImmersiveContent = staticCompositionLocalOf<MutableState<Boolean>> { mutableStateOf(false) }
+
+// The local intent stays true while buffering, and a Cast session holds the install even while paused because installing ends it.
+private fun PlayerConnection.playbackActive() =
+    combine(wantsPlaybackState, isPlaying, castState) { wants, playing, cast -> wants || playing || cast.isConnected }

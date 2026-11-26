@@ -46,10 +46,12 @@ data class SongItem(
     val customArtist: String? = null,
     val canonicalTitle: String? = null,
     val canonicalArtists: List<ArtistTiny>? = null,
+    val originalQueueItemId: String? = null,
     val explicitness: Boolean? = null,
     override val libraryAddedAt: Long? = null,
     override val libraryUpdatedAt: Long? = null,
     val playlistLocalMappingId: Int? = null,
+    val playlistOccurrenceId: String? = null,
     val playbackPositionMs: Long? = null,
     val playbackProgressPercent: Int? = null,
     override val isUnavailable: Boolean = false,
@@ -263,6 +265,7 @@ data class HomeSection(
     val headerBrowseId: String? = null,
     val numItemsPerColumn: Int? = null,
     val isResponsiveList: Boolean = false,
+    val excludedItemIds: Set<String> = emptySet(),
 )
 
 @Serializable
@@ -535,7 +538,7 @@ enum class LyricsProvider {
                 "KuGou" -> KUGOU
                 "Paxsenix" -> PAXSENIX
                 "SimpMusic" -> SIMPMUSIC
-                "YouTubeSubtitle" -> YOUTUBESUBTITLE
+                "YouTubeSubtitle", "YouTube Subtitle" -> YOUTUBESUBTITLE
                 "YouTube Music", "YouTube" -> YOUTUBE
                 else -> null
             }
@@ -586,16 +589,18 @@ enum class LyricsProvider {
         fun preferredProvidersForFetch(
             userOrder: List<LyricsProvider>,
             enabled: Set<LyricsProvider>,
+            youtubeCaptionsEnabled: Boolean,
             preferVideoProviders: Boolean = false,
         ): List<LyricsProvider> {
             val userEnabled = userOrder.filter { it in enabled }
+            val fallbacks = afterUserLyricsFallbacks.filter { it != YOUTUBESUBTITLE || youtubeCaptionsEnabled }
             if (userEnabled.isEmpty()) {
-                return afterUserLyricsFallbacks
+                return fallbacks
             }
             if (!preferVideoProviders) {
-                return userEnabled + afterUserLyricsFallbacks
+                return userEnabled + fallbacks
             }
-            return (afterUserLyricsFallbacks + userEnabled).distinct()
+            return (fallbacks + userEnabled).distinct()
         }
     }
 }

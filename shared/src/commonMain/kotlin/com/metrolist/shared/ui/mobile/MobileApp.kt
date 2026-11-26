@@ -160,6 +160,7 @@ import com.metrolist.shared.generated.resources.search
 import com.metrolist.shared.generated.resources.search_history_removal_failed
 import com.metrolist.shared.generated.resources.settings_diagnostic_logging_description
 import com.metrolist.shared.generated.resources.settings_storage_summary
+import com.metrolist.shared.generated.resources.share
 import com.metrolist.shared.generated.resources.shuffle
 import com.metrolist.shared.generated.resources.subscribed_to_artist
 import com.metrolist.shared.generated.resources.youtube_session_expired_message
@@ -272,6 +273,8 @@ import com.metrolist.shared.ui.theme.rememberArtworkSeedColor
 import com.metrolist.shared.ui.theme.resolveThemeSeedColor
 import com.metrolist.shared.ui.utils.rememberFileSizeFormatter
 import com.metrolist.shared.ui.utils.setText
+import com.metrolist.shared.ui.wrapped.WrappedHomeCard
+import com.metrolist.shared.ui.wrapped.WrappedScreen
 import com.metrolist.shared.utils.BlockScreenshots
 import com.metrolist.shared.utils.openUrl
 import com.metrolist.shared.utils.parseYouTubeUrl
@@ -386,7 +389,8 @@ fun MobileApp(
                 platformContext = platformContext,
                 platform = playerServices,
                 lyricsRepository = lyricsRepository,
-                animatedArtworkService = AnimatedArtworkService(GlobalYouTube.client),
+                animatedArtworkService =
+                    KoinPlatform.getKoinOrNull()?.getOrNull<AnimatedArtworkService>() ?: AnimatedArtworkService(GlobalYouTube.client),
                 musicVideoResolver = KoinPlatform.getKoin().get(),
                 viewModelScope = scope,
             )
@@ -419,10 +423,15 @@ fun MobileApp(
             else -> MobileRoute.Home
         }.takeIf { it in visibleTabRoutes } ?: visibleTabRoutes.first()
     var selectedTab by remember { mutableStateOf(defaultTab) }
+    val downloadsTitle = stringResource(Res.string.downloaded)
     val routeStack =
         remember {
             mutableStateListOf<MobileRouteEntry>().apply {
-                initialSettingsPage?.let { add(MobileRouteEntry(MobileRoute.Settings(initialPage = it))) }
+                if (initialSettingsPage != null) {
+                    add(MobileRouteEntry(MobileRoute.Settings(initialPage = initialSettingsPage)))
+                } else if (Settings.shared.defaultOpenTab == "DOWNLOADS" && MobileRoute.Library in visibleTabRoutes) {
+                    add(MobileRouteEntry(MobileRoute.SongCollection("downloaded", downloadsTitle)))
+                }
             }
         }
     val containers = remember { NavigationContainerState() }
@@ -441,7 +450,13 @@ fun MobileApp(
         onStopOrDispose { libraryViewModel.setActive(false) }
     }
     val latestVideoResolver = rememberUpdatedState(resolveAndPlayVideo)
-    val videoLookup = remember(scope) { MobileVideoLookup(scope, { latestVideoResolver.value(it) }) { showPlayer = true } }
+    val videoLookup =
+        remember(scope) {
+            MobileVideoLookup(scope, { latestVideoResolver.value(it) }) {
+                if (routeStack.lastOrNull()?.route == MobileRoute.Wrapped) routeStack.removeAt(routeStack.lastIndex)
+                showPlayer = true
+            }
+        }
 
     fun cancelVideoLookup() = videoLookup.cancel()
 
@@ -643,6 +658,7 @@ fun MobileApp(
                     }
 
                     MobileDeepLink.Player -> {
+                        if (routeStack.lastOrNull()?.route == MobileRoute.Wrapped) back()
                         setPlayerVisible(true)
                     }
                 }
@@ -953,7 +969,7 @@ fun MobileApp(
                     },
                     bottomBar = {
                         // The floating bar's height sits under the mini player slot; lists scroll behind both.
-                        if (playbackState.currentSong == null) {
+                        if (playbackState.currentSong == null || currentRoute == MobileRoute.Wrapped) {
                             Spacer(Modifier.fillMaxWidth().height(floatingContentInset))
                         } else {
                             val isModernMiniPlayer = Settings.shared.miniPlayerType == MiniPlayerType.MODERN
@@ -1094,7 +1110,7 @@ fun MobileApp(
                                                 onLoadMore = homeViewModel::loadMoreSections,
                                                 modifier = Modifier.fillMaxSize(),
                                                 header = {
-                                                    if (!homeState.error.isNullOrBlank()) {
+                                                    if (homeState.error != null) {
                                                         item(key = "home_error") {
                                                             Column(
                                                                 Modifier.fillMaxWidth().padding(24.dp),
@@ -1119,6 +1135,12 @@ fun MobileApp(
                                                                 modifier = Modifier.padding(top = MdSpacing.xs + MdSpacing.xxs),
                                                             )
                                                         }
+                                                    }
+                                                    item(key = "wrapped_card") {
+                                                        WrappedHomeCard(
+                                                            onClick = { open(MobileRoute.Wrapped) },
+                                                            onDismissed = { scope.launch { snackbarHostState.showSnackbar(it) } },
+                                                        )
                                                     }
                                                 },
                                             )
@@ -1170,6 +1192,10 @@ fun MobileApp(
                                     },
                                     onSearch = { query ->
                                         cancelVideoLookup()
+                                        resolveMobilePodcastBrowseLink(query)?.let { route ->
+                                            open(route)
+                                            return@SearchScreen
+                                        }
                                         when (val parsed = parseYouTubeUrl(query)) {
                                             is YouTubeUrlParser.ParsedUrl.Video -> {
                                                 playVideo(parsed.id)
@@ -1244,6 +1270,8 @@ fun MobileApp(
                                     database = database,
                                     viewModel = libraryViewModel,
                                     playbackController = playbackController,
+                                    guestPlaybackLocked = isListenTogetherGuest,
+                                    onSwipeFeedback = onSwipeFeedback,
                                     onItemClick = ::openItem,
                                     onItemLongClick = { menuItem = it to null },
                                     onAutoPlaylistClick = { type, title -> open(MobileRoute.SongCollection(type, title)) },
@@ -1278,6 +1306,19 @@ fun MobileApp(
                                 )
                             }
 
+                            MobileRoute.Wrapped -> {
+                                WrappedScreen(
+                                    database = database,
+                                    playbackController = playbackController,
+                                    onBack = ::back,
+                                    onExport = onExportStatistics,
+                                    exportLabel = stringResource(Res.string.share),
+                                    bottomContentPadding = playerContentPadding,
+                                    showBackButton = true,
+                                    onHomeCardRetired = { scope.launch { snackbarHostState.showSnackbar(it) } },
+                                )
+                            }
+
                             MobileRoute.Statistics -> {
                                 MobileStatisticsScreen(
                                     onError = onSwipeFeedback,
@@ -1291,6 +1332,7 @@ fun MobileApp(
                                     onAlbumClick = { id, title -> open(MobileRoute.Album(id, title)) },
                                     onArtistClick = { id, name -> open(MobileRoute.Artist(id, name)) },
                                     modifier = Modifier.fillMaxSize().padding(routePadding),
+                                    onOpenWrapped = { open(MobileRoute.Wrapped) },
                                 )
                             }
 
@@ -1722,6 +1764,7 @@ fun MobileApp(
                                         fallbackTitle = route.title,
                                         database = database,
                                         playbackController = playbackController,
+                                        onSaveError = onSwipeFeedback,
                                         onBack = ::back,
                                         onShare = { scope.launch { clipboard.setText(it) } },
                                         onSongMenu = { menuItem = it to null },
@@ -1775,6 +1818,7 @@ fun MobileApp(
                                     fallbackTitle = route.title,
                                     database = database,
                                     playbackController = playbackController,
+                                    onSaveError = onSwipeFeedback,
                                     onBack = ::back,
                                     onShare = { scope.launch { clipboard.setText(it) } },
                                     onSongMenu = { menuItem = it to null },
@@ -1967,7 +2011,7 @@ fun MobileApp(
                 )
             }
 
-            if (playbackState.currentSong != null && miniPlayerBounds != null) {
+            if (playbackState.currentSong != null && miniPlayerBounds != null && currentRoute != MobileRoute.Wrapped) {
                 var playerRootOffset by remember { mutableStateOf(Offset.Zero) }
                 BoxWithConstraints(
                     Modifier.fillMaxSize().onGloballyPositioned { playerRootOffset = it.positionInRoot() },
@@ -1999,7 +2043,12 @@ fun MobileApp(
                         }
                     }
                     SideEffect { playerSheetSettled = sheetState.isSettledExpanded }
-                    DisposableEffect(Unit) { onDispose { playerSheetSettled = false } }
+                    DisposableEffect(Unit) {
+                        onDispose {
+                            playerSheetSettled = false
+                            playerSheetCoversSnackbars = false
+                        }
+                    }
                     val playerPlatform =
                         remember(
                             database,

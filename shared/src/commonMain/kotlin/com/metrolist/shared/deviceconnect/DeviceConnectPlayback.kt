@@ -52,6 +52,10 @@ data class DcPlaybackCommand(
     val order: List<Int> = emptyList(),
     val volume: Float? = null,
     val preserveCurrentTrack: Boolean = false,
+    val explicitRadioQueue: Boolean = false,
+    val startPlaying: Boolean? = null,
+    val advanceCurrentToSuccessor: Boolean = false,
+    val successorIndex: Int? = null,
 )
 
 @Serializable
@@ -77,6 +81,7 @@ data class DcLocalPlaybackState(
     val finite: Boolean = true,
     val scrobbleSession: DcScrobbleSession? = null,
     val volume: Float = 1f,
+    val explicitRadioQueue: Boolean = false,
 )
 
 /** The target device's playback at one instant; [playback] position is valid at [anchorTimeMs] on the target's clock. */
@@ -111,6 +116,8 @@ data class DcSyncState(
 )
 
 interface DeviceConnectPlaybackPort {
+    fun onExplicitRadioRequest() = Unit
+
     val canStartDefaultPlayback: Boolean get() = true
 
     suspend fun snapshot(): DcLocalPlaybackState
@@ -121,7 +128,10 @@ interface DeviceConnectPlaybackPort {
         shouldCommit: () -> Boolean,
     )
 
-    suspend fun setControllerPlayback(playback: DcLocalPlaybackState?)
+    suspend fun setControllerPlayback(
+        playback: DcLocalPlaybackState?,
+        provisional: Boolean = false,
+    )
 
     suspend fun setPlaying(playing: Boolean)
 

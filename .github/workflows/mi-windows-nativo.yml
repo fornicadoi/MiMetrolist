@@ -94,6 +94,7 @@ jobs:
             --image "$NATIVE_WORK/image" --output "$NATIVE_WORK/packages"
 
       - name: Publicar en Releases
+        if: github.ref == 'refs/heads/main'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

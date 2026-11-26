@@ -270,7 +270,7 @@ fun SongListItem(
     val contentColor = colors.content
     val subtitleColor = colors.subtitle
     val linkColor = colors.link
-    val artworkShape = animatedCurrentSongArtworkShape(isCurrent, RoundedCornerShape(4.dp))
+    val artworkShape = animatedCurrentSongArtworkShape(isCurrent, gridCellShape())
     val artworkRotation by rememberCurrentSongArtworkRotation(isCurrent, isPlaying)
     val numberedArtwork = index != null && !showThumbnail && leadingContent == null
     Row(
@@ -279,9 +279,9 @@ fun SongListItem(
                 .fillMaxWidth()
                 .heightIn(min = 56.dp)
                 .alpha(if (enabled) 1f else 0.38f)
-                .clip(if (isCurrent) CircleShape else RoundedCornerShape(8.dp))
+                .clip(if (isCurrent) CircleShape else gridCellShape())
                 .background(colors.container)
-                .focusOutline(if (isCurrent) CircleShape else RoundedCornerShape(8.dp))
+                .focusOutline(if (isCurrent) CircleShape else gridCellShape())
                 .currentSongSemantics(isCurrent, isPlaying)
                 .combinedClickable(
                     onClick = {
@@ -789,9 +789,9 @@ fun YTListItem(
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
                 .alpha(if (itemEnabled) 1f else 0.38f)
-                .clip(if (currentSong) CircleShape else RoundedCornerShape(4.dp))
+                .clip(if (currentSong) CircleShape else gridCellShape())
                 .background(colors.container)
-                .focusOutline(if (currentSong) CircleShape else RoundedCornerShape(4.dp))
+                .focusOutline(if (currentSong) CircleShape else gridCellShape())
                 .currentSongSemantics(currentSong, isPlaying)
                 .then(if (pageArtwork != null) Modifier.navigationPageSource(pageArtwork.token) else Modifier)
                 .combinedClickable(
@@ -812,14 +812,14 @@ fun YTListItem(
         val shape =
             animatedCurrentSongArtworkShape(
                 currentSong,
-                if (item is ArtistItem) artistArtworkShape(item.id) else RoundedCornerShape(4.dp),
+                if (item is ArtistItem) artistArtworkShape(item.id) else gridCellShape(),
             )
         val artworkRotation by rememberCurrentSongArtworkRotation(currentSong, isPlaying)
 
         Box(
             modifier =
                 Modifier
-                    .then(pageArtwork?.modifier(4.dp) ?: Modifier)
+                    .then(pageArtwork?.modifier(uiEnhanced(ThumbnailCornerRadius, 12.dp)) ?: Modifier)
                     .squareArtworkSlot(48.dp, if (currentSong) 1f else item.thumbnailAspectRatio)
                     .graphicsLayer { rotationZ = artworkRotation }
                     .clip(shape)
@@ -1151,7 +1151,7 @@ fun ListCard(
             cover = cover,
             localArtwork = localArtwork,
             cornerRadius = cornerRadius,
-            shape = artistId?.let { artistArtworkShape(it) } ?: RoundedCornerShape(cornerRadius),
+            shape = artistId?.let { artistArtworkShape(it) } ?: if (mio) RoundedCornerShape(cornerRadius) else gridCellShape(),
             iconModifier = iconModifier,
             overlay = artworkOverlay,
             isPlaylistArtwork = isPlaylistArtwork,

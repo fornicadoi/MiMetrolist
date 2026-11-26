@@ -1,12 +1,12 @@
 name: Mi sincronización
 
-# Cada 3 horas revisa la nightly de MetrolistGroup/Metrolist y su última versión oficial,
-# y usa la más nueva de las dos. Si cambió, aplica esos cambios sobre MiMetrolist
-# y compila de nuevo el teléfono y las dos versiones de Windows.
+# Una vez al día toma lo más nuevo de MetrolistGroup/Metrolist: el último cambio de su rama
+# principal que pasó sus pruebas (CI), o su nightly o última versión oficial si alguna es más nueva.
+# Si cambió, aplica esos cambios sobre MiMetrolist y compila el teléfono y las dos versiones de Windows.
 
 on:
   schedule:
-    - cron: '23 */3 * * *'
+    - cron: '23 8 * * *'
   workflow_dispatch:
 
 permissions:
@@ -47,6 +47,16 @@ jobs:
             if [ "$release" != "$new" ] && git merge-base --is-ancestor "$new" "$release"; then
               new="$release"
               label="$release_tag"
+            fi
+          fi
+          # La rama principal avanza aunque la nightly se quede quieta: usa su último cambio con las pruebas en verde.
+          ci_sha=$(gh run list -R MetrolistGroup/Metrolist --workflow ci.yml --branch main --event push --status success \
+            --limit 1 --json headSha --jq '.[0].headSha' 2>/dev/null || true)
+          if [ -n "$ci_sha" ]; then
+            git fetch --no-tags --depth=300 upstream "+refs/heads/main:refs/upstream/main"
+            if git cat-file -e "${ci_sha}^{commit}" 2>/dev/null && git merge-base --is-ancestor "$new" "$ci_sha"; then
+              new="$ci_sha"
+              label="main"
             fi
           fi
           git fetch --no-tags --depth=300 upstream "$last" || true

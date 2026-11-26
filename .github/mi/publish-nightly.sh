@@ -4,6 +4,11 @@
 # Las notas listan los cambios desde la versión anterior, y la app las muestra como "Novedades".
 # Para escribirlas a mano, edita .github/mi/novedades.md en el mismo envío.
 set -euo pipefail
+# Las compilaciones de prueba en otras ramas no se publican.
+if [ "${GITHUB_REF:-refs/heads/main}" != "refs/heads/main" ]; then
+  echo "Rama ${GITHUB_REF}: compilación de prueba, no se publica."
+  exit 0
+fi
 file="$1"
 repo="$GITHUB_REPOSITORY"
 upstream=$(cut -c1-7 .github/mi/upstream-sha 2>/dev/null || echo "?")

@@ -2,6 +2,7 @@ package com.metrolist.android.data
 
 import androidx.room3.useReaderConnection
 import androidx.sqlite.SQLiteStatement
+import com.metrolist.shared.api.lastfm.LastFmListen
 import com.metrolist.shared.db.HISTORY_SNAPSHOT_ARTIST_MATCH_SQL
 import com.metrolist.shared.db.HistoryCursor
 import com.metrolist.shared.db.HistoryStatGroup
@@ -10,6 +11,7 @@ import com.metrolist.shared.db.RemoteHistoryDate
 import com.metrolist.shared.db.daos.DatabaseDao
 import com.metrolist.shared.db.deleteHistoryEntries
 import com.metrolist.shared.db.entities.Event
+import com.metrolist.shared.db.entities.RelatedSongMap
 import com.metrolist.shared.db.historyAlbumStatistics
 import com.metrolist.shared.db.historyArtistStatistics
 import com.metrolist.shared.db.historySongStatistics
@@ -28,9 +30,16 @@ import com.metrolist.shared.db.withDatabaseTransaction
 import com.metrolist.shared.model.HistorySortMode
 import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.model.SortDirection
+import com.metrolist.shared.model.isNonMusicalVideo
+import com.metrolist.shared.model.isPodcast
 import com.metrolist.shared.settings.BlockedContent
+import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.state.GlobalYouTubeRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -41,6 +50,7 @@ import java.util.Locale
 import kotlin.time.Instant
 
 private const val HISTORY_LOG_TAG = "PlayHistory"
+private const val RELATED_SONGS_LIMIT = 20
 
 data class HistoryEntry(
     val id: Long,
@@ -99,6 +109,8 @@ class PlayHistoryRepository(
     private val database: MusicDatabase,
     private val dao: DatabaseDao,
 ) {
+    private val relatedSongsScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private data class SqlFilter(
         val sql: String,
         val args: List<Any?> = emptyList(),
@@ -195,7 +207,8 @@ class PlayHistoryRepository(
     suspend fun getStatisticsSnapshot(
         sinceMs: Long,
         untilMs: Long,
-    ) = database.historyStatisticsSnapshot(sinceMs, untilMs, catalogArtistIds = true)
+        lastFm: List<LastFmListen> = emptyList(),
+    ) = database.historyStatisticsSnapshot(sinceMs, untilMs, catalogArtistIds = true, lastFm = lastFm)
 
     suspend fun getHistoryTotals(
         sinceMs: Long,
@@ -313,6 +326,39 @@ class PlayHistoryRepository(
             playTimeMs,
             song.artists.size,
         )
+        // Keep the optional network fetch out of the ordered history writes.
+        if (Settings.shared.useLocalHomeRecommendations) {
+            relatedSongsScope.launch { recordRelatedSongs(song.id) }
+        }
+    }
+
+    /** Stores the songs YouTube relates to [songId] for history-based Quick picks. */
+    private suspend fun recordRelatedSongs(songId: String) {
+        // Local files have no YouTube watch id, so their relations cannot be fetched.
+        if (songId.startsWith("local_")) return
+        try {
+            if (dao.hasRelatedSongs(songId)) return
+            val related =
+                GlobalYouTubeRepository.instance
+                    .startRadio(songId)
+                    .filter { it.id.isNotBlank() && it.id != songId && !it.isNonMusicalVideo && !it.isPodcast }
+                    .distinctBy { it.id }
+                    .take(RELATED_SONGS_LIMIT)
+            if (related.isEmpty()) return
+            database.withDatabaseTransaction {
+                // Recheck inside the transaction: overlapping qualified plays of the
+                // same seed could both pass the check above before either write.
+                if (dao.hasRelatedSongs(songId)) return@withDatabaseTransaction
+                related.forEach { relatedSong ->
+                    dao.upsertHistorySong(relatedSong)
+                    dao.insert(RelatedSongMap(songId = songId, relatedSongId = relatedSong.id))
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag(HISTORY_LOG_TAG).w("related songs fetch failed type=%s", e::class.simpleName)
+        }
     }
 
     suspend fun getSongListeningStats(songId: String): SongListeningStats =

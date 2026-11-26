@@ -34,6 +34,7 @@ import androidx.media3.session.SessionResult
 import com.metrolist.android.deviceconnect.toDeviceConnectRepeatMode
 import com.metrolist.android.listentogether.AndroidListenTogetherManager
 import com.metrolist.shared.cast.CastState
+import com.metrolist.shared.cast.castVolumePercent
 import com.metrolist.shared.deviceconnect.DcPlaybackAction
 import com.metrolist.shared.deviceconnect.DcPlaybackCommand
 import com.metrolist.shared.model.SongItem
@@ -107,21 +108,24 @@ internal class MediaSessionItemCache(
     private var entryKey: Long? = null
     private var revision = -1L
     private var aliases: String? = null
+    private var artworkRevision = 0L
     private var item: MediaItem? = null
 
     fun get(
         song: SongItem?,
         entryKey: Long? = null,
+        artworkRevision: Long = 0L,
     ): MediaItem? {
         val revision = SongMetadataState.revision.value
         val aliases = Settings.shared.artistNameAliasesJson
         if (this.song !== song || this.entryKey != entryKey || this.revision != revision ||
-            this.aliases != aliases
+            this.aliases != aliases || this.artworkRevision != artworkRevision
         ) {
             this.song = song
             this.entryKey = entryKey
             this.revision = revision
             this.aliases = aliases
+            this.artworkRevision = artworkRevision
             item = song?.let(SongMetadataState::apply)?.toMediaItem(entryKey, artworkUri)
         }
         return item
@@ -342,9 +346,11 @@ class MediaSessionPlayer(
     private val onRemoteSeek: (Long) -> Unit = {},
     private val onRemoteVolumeChange: (Float) -> Unit = {},
     private val onQueueChanged: (replacesQueue: Boolean) -> Unit = {},
+    private val onQueueCleared: () -> Unit = {},
     private val artworkUri: (String?) -> Uri? = { it?.let(::canonicalArtworkUrl)?.toUri() },
     private val mediaItemResolver: (MediaItem) -> SongItem? = { null },
     currentArtworkUri: (String?) -> Uri? = artworkUri,
+    currentArtworkAuthority: String? = null,
     private val automotivePlaybackRequestGate: AutomotivePlaybackRequestGate? = null,
     private val isAutomotiveSongBlocked: (SongItem) -> Boolean = { it.isUnavailable || BlockedContent.isBlocked(it) },
     private val isDeviceConnectFollowing: () -> Boolean = { false },
@@ -363,7 +369,9 @@ class MediaSessionPlayer(
     private val timelineCache = MediaSessionTimelineCache(artworkUri)
     private var publishedTimeline: Timeline? = null
     private val currentItemCache = MediaSessionItemCache(artworkUri)
-    private val metadataItemCache = MediaSessionItemCache(currentArtworkUri)
+    private val currentArtwork = CurrentSessionArtwork(currentArtworkAuthority, PlaybackNetworkStateStore.current.connected)
+    private val metadataItemCache =
+        MediaSessionItemCache { thumbnail -> currentArtworkUri(thumbnail)?.let(currentArtwork::uriForMetadata) }
     private val timelineDurationPublicationTracker = TimelineDurationPublicationTracker()
     private val castTimelineDurationPublicationTracker = CastTimelineDurationPublicationTracker()
 
@@ -412,7 +420,37 @@ class MediaSessionPlayer(
             ) {
                 listeners.forEach { it.onSurfaceSizeChanged(width, height) }
             }
+
+            // Without a seek discontinuity Media3 keeps publishing the pre-seek position to the system media controls.
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int,
+            ) {
+                if (reason != Player.DISCONTINUITY_REASON_SEEK && reason != Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) return
+                val old = sessionPositionInfo(oldPosition.positionMs)
+                val new = sessionPositionInfo(newPosition.positionMs)
+                listeners.forEach { it.onPositionDiscontinuity(old, new, reason) }
+            }
         }
+
+    // The backend player's indices and uids differ from the session timeline, so rebuild them from the session's view.
+    private fun sessionPositionInfo(positionMs: Long): Player.PositionInfo {
+        val timeline = getCurrentTimeline()
+        val index = getCurrentMediaItemIndex()
+        val hasItem = index in 0 until timeline.windowCount
+        return Player.PositionInfo(
+            if (hasItem) timeline.getUidOfPeriod(index) else null,
+            index,
+            getCurrentMediaItem(),
+            if (hasItem) timeline.getUidOfPeriod(index) else null,
+            index,
+            positionMs,
+            positionMs,
+            C.INDEX_UNSET,
+            C.INDEX_UNSET,
+        )
+    }
 
     init {
         musicPlayer.addPlayerListener(musicPlayerListener)
@@ -441,24 +479,13 @@ class MediaSessionPlayer(
                 musicPlayer.wantsPlaybackState,
                 musicPlayer.playbackStateFlow,
                 musicPlayer.playbackTransitionPending,
-            ) { _, _, _, _ -> Triple(isPlaying, playbackState, playWhenReady) }
-                .distinctUntilChanged()
-                .collect { state ->
-                    val previous = publishedPlaybackState
-                    publishedPlaybackState = state
-                    listeners.forEach {
-                        if (previous?.first != state.first) it.onIsPlayingChanged(state.first)
-                        if (previous?.second != state.second) it.onPlaybackStateChanged(state.second)
-                        if (previous?.third !=
-                            state.third
-                        ) {
-                            it.onPlayWhenReadyChanged(state.third, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
-                        }
-                    }
-                }
+            ) { _, _, _, _ -> }
+                .collect { publishPlaybackState() }
         }
         scope.launch {
             musicPlayer.currentSong.collectLatest {
+                // Media3 may repost a stale notification if it sees cleared metadata before the stop's idle state.
+                publishPlaybackState()
                 listeners.forEach {
                     it.onMediaItemTransition(getCurrentMediaItem(), Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
                     it.onMediaMetadataChanged(getMediaMetadata())
@@ -469,13 +496,13 @@ class MediaSessionPlayer(
         }
         scope.launch {
             merge(
-                SongMetadataState.revision.map { Unit },
+                SongMetadataState.revision.map { null },
                 PlaybackNetworkStateStore.state
                     .map { it.connected }
-                    .distinctUntilChanged()
-                    .map { Unit },
-                snapshotFlow { Settings.shared.artistNameAliasesJson }.map { Unit },
-            ).collectLatest {
+                    .distinctUntilChanged(),
+                snapshotFlow { Settings.shared.artistNameAliasesJson }.map { null },
+            ).collectLatest { connected ->
+                if (connected != null) currentArtwork.updateConnectivity(connected)
                 if (musicPlayer.currentSong.value != null) {
                     listeners.forEach { it.onMediaMetadataChanged(getMediaMetadata()) }
                     publishTimeline(Player.TIMELINE_CHANGE_REASON_SOURCE_UPDATE)
@@ -623,6 +650,20 @@ class MediaSessionPlayer(
         }
     }
 
+    private fun publishPlaybackState() {
+        val state = Triple(isPlaying, playbackState, playWhenReady)
+        val previous = publishedPlaybackState
+        if (previous == state) return
+        publishedPlaybackState = state
+        listeners.forEach {
+            if (previous?.first != state.first) it.onIsPlayingChanged(state.first)
+            if (previous?.second != state.second) it.onPlaybackStateChanged(state.second)
+            if (previous?.third != state.third) {
+                it.onPlayWhenReadyChanged(state.third, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+            }
+        }
+    }
+
     override fun getPlaybackState(): Int =
         when {
             terminalError != null -> {
@@ -758,7 +799,7 @@ class MediaSessionPlayer(
 
     override fun getMediaMetadata(): MediaMetadata =
         metadataItemCache
-            .get(musicPlayer.currentSong.value)
+            .get(musicPlayer.currentSong.value, artworkRevision = currentArtwork.revision)
             ?.mediaMetadata
             ?.buildUpon()
             ?.setUserRating(
@@ -792,7 +833,7 @@ class MediaSessionPlayer(
             DeviceInfo.UNKNOWN
         }
 
-    override fun getDeviceVolume(): Int = ((remotePlaybackState?.value?.volume ?: 0f) * 100).toInt().coerceIn(0, 100)
+    override fun getDeviceVolume(): Int = castVolumePercent(remotePlaybackState?.value?.volume ?: 0f)
 
     override fun isDeviceMuted(): Boolean = remotePlaybackState?.value?.isConnected == true && getDeviceVolume() == 0
 
@@ -810,7 +851,7 @@ class MediaSessionPlayer(
         muted: Boolean,
         flags: Int,
     ) {
-        setDeviceVolume((remoteVolumeTracker.volumeForMutedState(muted) * 100).toInt(), flags)
+        setDeviceVolume(castVolumePercent(remoteVolumeTracker.volumeForMutedState(muted)), flags)
     }
 
     override fun getAudioAttributes(): AudioAttributes = AudioAttributes.DEFAULT
@@ -899,10 +940,23 @@ class MediaSessionPlayer(
         val remoteState = remotePlaybackState?.value?.takeIf { it.isConnected }
         if (remoteState == null) {
             musicPlayer.skipToPrevious(repeatAll = repeatMode.value == Player.REPEAT_MODE_ALL, resumePlayback = musicPlayer.wantsPlayback)
-        } else if (shouldRestartCurrentItem(remoteState.positionMs, musicPlayer.currentMediaItemIndex.value)) {
-            onRemoteSeek(0L)
+        } else if (isCurrentMediaItemLive) {
+            val previousIndex = getPreviousMediaItemIndex()
+            if (previousIndex != C.INDEX_UNSET && previousIndex != getCurrentMediaItemIndex()) seekToPreviousMediaItem()
         } else {
-            seekToPreviousMediaItem()
+            val currentIndex = musicPlayer.currentMediaItemIndex.value
+            val shouldWrap =
+                shouldWrapToLastItem(
+                    repeatAll = repeatMode.value == Player.REPEAT_MODE_ALL,
+                    playbackPositionMs = remoteState.positionMs,
+                    currentQueueIndex = currentIndex,
+                    lastQueueIndex = musicPlayer.songQueue.value.lastIndex,
+                )
+            if (!shouldWrap && shouldRestartCurrentItem(remoteState.positionMs, currentIndex)) {
+                onRemoteSeek(0L)
+            } else {
+                seekToPreviousMediaItem()
+            }
         }
     }
 
@@ -919,7 +973,7 @@ class MediaSessionPlayer(
         if (isPlaybackLockedProvider()) return
         if (interceptDeviceConnect(DcPlaybackCommand(DcPlaybackAction.PREVIOUS))) return
         getPreviousMediaItemIndex().takeUnless { it == C.INDEX_UNSET }?.let {
-            musicPlayer.skipToQueueItem(it, resumePlayback = musicPlayer.wantsPlayback)
+            musicPlayer.skipToQueueItem(it, resumePlayback = musicPlayer.wantsPlayback, backward = true)
         }
     }
 
@@ -1178,15 +1232,18 @@ class MediaSessionPlayer(
     private inline fun mutateQueueItems(
         replacesQueue: Boolean = false,
         mutation: () -> Unit,
-    ) {
+    ): Boolean {
         val previousState = musicPlayer.queueState.value
         mutation()
         val currentState = musicPlayer.queueState.value
-        if (currentState == previousState) return
+        if (currentState == previousState) return false
         onQueueChanged(replacesQueue || previousState.entries.isEmpty())
-        if (previousState.entries.isNotEmpty() && currentState.entries.isEmpty() && remotePlaybackState?.value?.isConnected == true) {
-            onRemoteStop()
+        val cleared = previousState.entries.isNotEmpty() && currentState.entries.isEmpty()
+        if (cleared) {
+            onQueueCleared()
+            if (remotePlaybackState?.value?.isConnected == true) onRemoteStop()
         }
+        return cleared
     }
 
     override fun moveMediaItem(
@@ -1247,12 +1304,14 @@ class MediaSessionPlayer(
     override fun clearMediaItems() {
         if (isPlaybackLockedProvider()) return
         if (interceptDeviceConnect(DcPlaybackCommand(DcPlaybackAction.CLEAR))) return
-        mutateQueueItems {
-            musicPlayer.removeQueueItems(
-                musicPlayer.songQueue.value.indices
-                    .toSet(),
-            )
-        }
+        val cleared =
+            mutateQueueItems {
+                musicPlayer.removeQueueItems(
+                    musicPlayer.songQueue.value.indices
+                        .toSet(),
+                )
+            }
+        if (!cleared) onQueueCleared()
         shuffleModeEnabled.value = false
     }
 
@@ -1404,19 +1463,19 @@ class MediaSessionPlayer(
     override fun getSurfaceSize(): androidx.media3.common.util.Size = androidx.media3.common.util.Size.UNKNOWN
 
     override fun increaseDeviceVolume() {
-        setDeviceVolume(getDeviceVolume() + 5, 0)
+        setDeviceVolume(getDeviceVolume() + Settings.shared.castVolumeStep, 0)
     }
 
     override fun increaseDeviceVolume(flags: Int) {
-        setDeviceVolume(getDeviceVolume() + 5, flags)
+        setDeviceVolume(getDeviceVolume() + Settings.shared.castVolumeStep, flags)
     }
 
     override fun decreaseDeviceVolume() {
-        setDeviceVolume(getDeviceVolume() - 5, 0)
+        setDeviceVolume(getDeviceVolume() - Settings.shared.castVolumeStep, 0)
     }
 
     override fun decreaseDeviceVolume(flags: Int) {
-        setDeviceVolume(getDeviceVolume() - 5, flags)
+        setDeviceVolume(getDeviceVolume() - Settings.shared.castVolumeStep, flags)
     }
 
     override fun setAudioAttributes(

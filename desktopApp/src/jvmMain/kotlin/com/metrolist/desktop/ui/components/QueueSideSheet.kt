@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import com.metrolist.desktop.state.app.AppState
 import com.metrolist.desktop.state.playback.ListenTogetherState
 import com.metrolist.desktop.state.playback.PlayerState
 import com.metrolist.desktop.state.playback.SuggestedSongKeys
@@ -49,9 +50,13 @@ import com.metrolist.shared.ui.player.QueueScreen
 import com.metrolist.shared.ui.player.QueueScreenState
 import com.metrolist.shared.ui.player.QueueTrack
 import com.metrolist.shared.utils.formatQueueDuration
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
+
+private var queueRemovalUndoJob: Job? = null
 
 @Composable
 internal fun DesktopQueueContent(
@@ -71,7 +76,6 @@ internal fun DesktopQueueContent(
     var menuSong by remember { mutableStateOf<Pair<Long, SongItem>?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
     var menuOffset by remember { mutableStateOf(DpOffset.Zero) }
-    var pendingRemoval by remember { mutableStateOf<QueueRemoval?>(null) }
     var showSleepDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -85,17 +89,19 @@ internal fun DesktopQueueContent(
         if (videoId != null) PlayerState.fetchRelated(videoId)
     }
 
-    LaunchedEffect(pendingRemoval) {
-        val removal = pendingRemoval ?: return@LaunchedEffect
-        val count = removal.items.size
-        val result =
-            snackbarHostState.showSnackbar(
-                message = getPluralString(Res.plurals.removed_from_queue, count, count),
-                actionLabel = getString(Res.string.undo),
-                duration = SnackbarDuration.Short,
-            )
-        if (result == SnackbarResult.ActionPerformed) PlayerState.restoreQueueItems(removal)
-        pendingRemoval = null
+    fun showRemovalUndo(removal: QueueRemoval) {
+        queueRemovalUndoJob?.cancel()
+        queueRemovalUndoJob =
+            AppState.scope.launch {
+                val count = removal.items.size
+                val result =
+                    AppState.snackbarHostState.showSnackbar(
+                        message = getPluralString(Res.plurals.removed_from_queue, count, count),
+                        actionLabel = getString(Res.string.undo),
+                        duration = SnackbarDuration.Short,
+                    )
+                if (result == SnackbarResult.ActionPerformed) PlayerState.restoreQueueItems(removal)
+            }
     }
 
     fun SongItem.toQueueTrack(
@@ -113,25 +119,22 @@ internal fun DesktopQueueContent(
         isSaved = false,
         isDownloaded = downloadStates[id] == DownloadState.DOWNLOADED,
         isSuggested = isSuggested,
-        canRemove = !isSuggested && queueIndex > queueState.currentIndex && !isQueueLocked,
+        canRemove = !isSuggested && !isQueueLocked,
         queueIndex = queueIndex,
         entryKey = entryKey,
         uniqueKey = if (isSuggested) "rec_$entryKey" else entryKey.toString(),
         thumbnailAspectRatio = previewAspectRatio,
     )
 
+    val queueSongs = queueState.entries.map { SongMetadataState.apply(it.song) }
     val tracks =
         queueState.entries.mapIndexed { index, entry ->
-            SongMetadataState
-                .apply(
-                    entry.song,
-                ).toQueueTrack(entry.key, index, isSuggested = false)
+            queueSongs[index].toQueueTrack(entry.key, index, isSuggested = false)
         }
     val suggestedTracks =
         keyedSuggestions.map { (key, song) ->
             SongMetadataState.apply(song).toQueueTrack(key, -1, isSuggested = true)
         }
-    val queueSongs = queueState.entries.map { SongMetadataState.apply(it.song) }
     val totalDuration = queueSongs.sumOf { it.duration ?: 0L }.takeIf { queueSongs.all { song -> song.duration != null } }
 
     fun songFor(entryKey: Long): SongItem? =
@@ -229,7 +232,7 @@ internal fun DesktopQueueContent(
                         QueueEvent.CommitReorder, QueueEvent.CollapseToolbar -> {}
 
                         is QueueEvent.RemoveTrack -> {
-                            PlayerState.removeQueueOccurrence(event.entryKey)?.let { pendingRemoval = it }
+                            PlayerState.removeQueueOccurrence(event.entryKey)?.let(::showRemovalUndo)
                         }
 
                         QueueEvent.SelectAll -> {
@@ -249,9 +252,9 @@ internal fun DesktopQueueContent(
                                 val indices =
                                     queueState.entries
                                         .withIndex()
-                                        .filter { (index, entry) -> entry.key in selectedEntryKeys && index > queueState.currentIndex }
+                                        .filter { (_, entry) -> entry.key in selectedEntryKeys }
                                         .mapTo(mutableSetOf()) { it.index }
-                                PlayerState.removeQueueItems(indices)?.let { pendingRemoval = it }
+                                PlayerState.removeQueueItems(indices)?.let(::showRemovalUndo)
                             }
                             selectedEntryKeys = emptySet()
                         }
@@ -304,7 +307,7 @@ internal fun DesktopQueueContent(
                     offset = menuOffset,
                     onRemoveFromPlaylist =
                         if (!isListenTogetherGuest && tracks.any { it.entryKey == entryKey && it.canRemove }) {
-                            { PlayerState.removeQueueOccurrence(entryKey)?.let { pendingRemoval = it } }
+                            { PlayerState.removeQueueOccurrence(entryKey)?.let(::showRemovalUndo) }
                         } else {
                             null
                         },

@@ -16,12 +16,17 @@ data class PlaylistSong(
         entityColumns = ["id"],
         entity = SongEntity::class,
     )
-    val song: Song,
-)
+    val songs: List<Song>,
+) {
+    // A list avoids Room's iOS ConcurrentModificationException for single-value relations above 999 rows.
+    val song: Song
+        get() = songs.last()
+}
 
 fun PlaylistSong.toSongItem(): SongItem =
     song.toSongItem().copy(
         playlistSetVideoId = map.setVideoId,
         playlistLocalMappingId = map.id,
+        playlistOccurrenceId = map.setVideoId?.let { "remote:$it" } ?: "local:${map.id}",
         playlistAddedOrder = map.id,
     )
