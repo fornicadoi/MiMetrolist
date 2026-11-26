@@ -145,7 +145,9 @@ class MioLiveDownloadTest {
                 .takeLast(40)
                 .forEach { lines += "log=${it.take(400)}" }
         }
-        if (outcome != "OK" && isYouTubeBlock(captured.toString() + lines.joinToString("\n"))) outcome = "BLOQUEO"
+        // The workflow asks YouTube directly first; a sign-in demand there means this server is blocked.
+        val runnerBlocked = System.getenv("MIO_YT_BLOCKED") == "1"
+        if (outcome != "OK" && (runnerBlocked || isYouTubeBlock(captured.toString() + lines.joinToString("\n")))) outcome = "BLOQUEO"
         report.writeText((listOf("resultado=$outcome") + lines).joinToString("\n") + "\n")
         println(report.readText())
         if (outcome == "ERROR") fail(lines.joinToString("; "))

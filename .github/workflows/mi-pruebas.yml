@@ -45,6 +45,15 @@ jobs:
           cache-scope: mi-pruebas-pc
           persist-configuration-cache: 'false'
 
+      - name: Preguntar a YouTube si bloquea este servidor
+        run: |
+          status=$(curl -s -X POST 'https://music.youtube.com/youtubei/v1/player?prettyPrint=false' \
+            -H 'Content-Type: application/json' -H 'Origin: https://music.youtube.com' -A 'Mozilla/5.0' \
+            -d '{"context":{"client":{"clientName":"WEB_REMIX","clientVersion":"1.20241106.01.00"}},"videoId":"4D7u5KF7SP8"}' \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin).get("playabilityStatus",{}).get("status",""))' || echo "SIN_RESPUESTA")
+          echo "YouTube responde: $status"
+          case "$status" in LOGIN_REQUIRED|SIN_RESPUESTA) echo "MIO_YT_BLOCKED=1" >> "$GITHUB_ENV" ;; esac
+
       - name: Descargar una canción
         env:
           MIO_LIVE_DOWNLOAD: '1'
