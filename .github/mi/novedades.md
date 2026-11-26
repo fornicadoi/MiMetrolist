@@ -1,7 +1,11 @@
-- Reordena tus listas en Biblioteca con el botón ⋮⋮ y guarda el orden con ✓
-- Mueve canciones dentro de tus listas desde sus tres puntitos: "Mover de posición"
-- Nuevo botón en Biblioteca para descargar todas tus listas de una vez
-- Al importar de Spotify, puedes mandar tus Me gusta a tus Favoritos en vez de crear una lista aparte
-- Sin internet, Inicio muestra solo lo que descargaste, con Reproducir todo y Aleatorio
-- Las portadas de canciones y listas descargadas se ven sin conexión
-- Arreglo: abrir la app sin internet ya no se queda en gris
+- Al día con Metrolist: casi 600 cambios nuevos desde la 14.0.1
+- Nuevo resumen "Metrolist Wrapped" en Inicio, además de Tu año en música
+- Recomendaciones de canciones dentro de tus listas, y agregar desde tus Me gusta o tu historial
+- Nuevo widget Expressive y widget de música renovado
+- Copias de seguridad automáticas programadas
+- Ecualizador con modo trayecto y limitador de picos
+- Detalles de canción con descripción, likes y estimación de dislikes
+- Tarjetas de historia para compartir canciones y letras
+- Puedes abrir la app directo en Descargas o Podcasts
+- Arreglos: la cola ya no se pierde al quitar la notificación pausada, Listen Together más estable y aviso cuando YouTube Music cierra tu sesión
+- Seguridad: compilada con la actualización de Java que corrige una vulnerabilidad

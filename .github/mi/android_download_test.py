@@ -26,6 +26,7 @@ BLOCK_HINTS = ("not a bot", "sign in to confirm", "login_required", "http 429", 
 # Botones de la bienvenida y de avisos, en orden de preferencia ("No" rechaza los reportes de errores).
 SKIP_WORDS = (
     "begin setup",
+    "ahora no",
     "continue with an empty library",
     "no",
     "continue",
