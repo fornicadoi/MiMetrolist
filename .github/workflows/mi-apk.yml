@@ -106,6 +106,13 @@ jobs:
           echo "::error::La app compiló, pero falta el secreto MI_KEYSTORE_B64 para firmarla y publicarla."
           exit 1
 
+      - name: Guardar la APK para las pruebas
+        uses: actions/upload-artifact@v4
+        with:
+          name: MiMetrolist-apk
+          path: dist/MiMetrolist.apk
+          retention-days: 7
+
       - name: Publicar en Releases
         env:
           GH_TOKEN: ${{ github.token }}
