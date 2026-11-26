@@ -82,3 +82,8 @@
 -dontwarn org.jetbrains.compose.reload.**
 
 -keepattributes Exceptions,InnerClasses,Signature,EnclosingMethod,*Annotation*
+
+# MiMetrolist: the Tao window backend (only used on native Wayland) references Nucleus hooks
+# that live in Nucleus' patched Compose UI, which this build does not ship. Windows never loads them.
+-dontwarn androidx.compose.ui.node.Nucleus**
+-dontwarn androidx.compose.ui.graphics.layer.Nucleus**
